@@ -129,7 +129,10 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
   padding:18px 18px calc(18px + var(--sab));
   max-height:92vh;overflow-y:auto;animation:slideUp .25s ease}
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-.drag{width:36px;height:4px;background:#cbd5e1;border-radius:99px;margin:0 auto 14px}
+.drag{width:48px;height:5px;background:#cbd5e1;border-radius:99px;
+  margin:0 auto 10px;touch-action:none;
+  padding:12px 50px; /* vùng chạm lớn hơn, dễ bấm */
+  box-sizing:content-box;background-clip:content-box}
 .sh-title{font-size:16px;font-weight:700;margin-bottom:14px}
 
 /* CART PANEL */
@@ -1193,6 +1196,50 @@ function importJSON(){
   r.readAsText(f);
 }
 
+// ==================== SWIPE TO CLOSE ====================
+function enableSwipeToClose(sheetEl, closeFn) {
+  var startY = 0, curY = 0;
+  // Gắn touchstart vào drag handle — tránh xung đột với scroll content
+  var handle = sheetEl.querySelector('.drag') || sheetEl;
+
+  function onMove(e) {
+    curY = e.touches[0].clientY;
+    var d = Math.max(0, curY - startY);
+    sheetEl.style.transform = 'translateY(' + d + 'px)';
+    e.preventDefault(); // chặn scroll khi đang kéo
+  }
+
+  function onEnd() {
+    // Gỡ listener ngay sau khi xong — không ảnh hưởng scroll lúc bình thường
+    document.removeEventListener('touchmove', onMove, {passive: false});
+    document.removeEventListener('touchend', onEnd);
+    sheetEl.style.overflowY = 'auto'; // khôi phục scroll
+    var d = curY - startY;
+    sheetEl.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+    if (d > 80) {
+      sheetEl.style.transform = 'translateY(110%)';
+      setTimeout(function() {
+        sheetEl.style.transform = '';
+        sheetEl.style.transition = '';
+        closeFn();
+      }, 260);
+    } else {
+      sheetEl.style.transform = 'translateY(0)';
+      setTimeout(function() { sheetEl.style.transition = ''; }, 300);
+    }
+  }
+
+  handle.addEventListener('touchstart', function(e) {
+    startY = e.touches[0].clientY;
+    curY = startY;
+    sheetEl.style.transition = 'none';
+    sheetEl.style.overflowY = 'hidden'; // tạm khóa scroll khi bắt đầu kéo
+    // Gắn động — passive:false để preventDefault() hoạt động
+    document.addEventListener('touchmove', onMove, {passive: false});
+    document.addEventListener('touchend', onEnd);
+  }, {passive: true});
+}
+
 // ==================== SERVICE WORKER ====================
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
@@ -1217,6 +1264,15 @@ document.getElementById('cartBtn').style.display='flex';
 renderSell();
 checkLow();
 setTimeout(showIOSGuide, 1000);
+
+// Gắn swipe-to-close cho tất cả bottom sheets
+document.querySelectorAll('.ovl').forEach(function(ovl) {
+  var sheet = ovl.querySelector('.sht');
+  if (sheet) enableSwipeToClose(sheet, function() { closeOvl(ovl.id); });
+});
+// Cart panel riêng (không dùng .ovl)
+var csh = document.querySelector('.csh');
+if (csh) enableSwipeToClose(csh, closeCartPanel);
 </script>
 </body>
 </html>
