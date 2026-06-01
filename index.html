@@ -1254,14 +1254,21 @@ function renderRep(){
 }
 function calcStats(ss){
   var rev=ss.reduce(function(a,x){return a+x.total;},0);
+  var paid=ss.reduce(function(a,x){return a+(x.paid||x.total);},0);
+  var change=ss.reduce(function(a,x){return a+(x.change||0);},0);
   var cost=ss.reduce(function(a,s){return a+s.items.reduce(function(b,it){var p=products.find(function(x){return x.id===it.id;});return b+(p&&p.buyPrice?p.buyPrice*it.qty*it.unitRatio:0);},0);},0);
-  return{rev:rev,orders:ss.length,cost:cost,profit:rev-cost};
+  var items=ss.reduce(function(a,s){return a+s.items.reduce(function(b,it){return b+it.qty;},0);},0);
+  return{rev:rev,orders:ss.length,cost:cost,profit:rev-cost,paid:paid,change:change,items:items};
 }
 function statsBlock(st){
-  return '<div class="sgrid"><div class="sc"><div class="sl">Doanh thu</div><div class="sv b">'+fm(st.rev)+'</div></div>'
-    +'<div class="sc"><div class="sl">Lợi nhuận</div><div class="sv g">'+fm(st.profit)+'</div></div>'
-    +'<div class="sc"><div class="sl">Số đơn</div><div class="sv">'+st.orders+'</div></div>'
-    +'<div class="sc"><div class="sl">TB/đơn</div><div class="sv">'+fm(st.orders?Math.round(st.rev/st.orders):0)+'</div></div></div>';
+  return '<div class="sgrid" style="grid-template-columns:1fr 1fr 1fr">'
+    +'<div class="sc"><div class="sl">Doanh thu</div><div class="sv b" style="font-size:15px">'+fm(st.rev)+'</div></div>'
+    +'<div class="sc"><div class="sl">Lợi nhuận</div><div class="sv g" style="font-size:15px">'+fm(st.profit)+'</div></div>'
+    +'<div class="sc"><div class="sl">Tiền thu vào</div><div class="sv" style="font-size:15px">'+fm(st.paid)+'</div></div>'
+    +'<div class="sc"><div class="sl">Tiền thối</div><div class="sv r" style="font-size:15px">'+fm(st.change)+'</div></div>'
+    +'<div class="sc"><div class="sl">Số đơn</div><div class="sv" style="font-size:15px">'+st.orders+'</div></div>'
+    +'<div class="sc"><div class="sl">Số mặt hàng</div><div class="sv" style="font-size:15px">'+st.items.toFixed(1).replace(/\.0$/,'')+'</div></div>'
+    +'</div>';
 }
 function saleRows(ss){
   if(!ss.length)return'<div class="empty">Không có đơn nào</div>';
