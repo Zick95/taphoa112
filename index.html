@@ -1257,7 +1257,8 @@ function calcStats(ss){
   var paid=ss.reduce(function(a,x){return a+(x.paid||x.total);},0);
   var change=ss.reduce(function(a,x){return a+(x.change||0);},0);
   var cost=ss.reduce(function(a,s){return a+s.items.reduce(function(b,it){var p=products.find(function(x){return x.id===it.id;});return b+(p&&p.buyPrice?p.buyPrice*it.qty*it.unitRatio:0);},0);},0);
-  var items=ss.reduce(function(a,s){return a+s.items.reduce(function(b,it){return b+it.qty;},0);},0);
+  var seen={};ss.forEach(function(s){s.items.forEach(function(it){seen[it.id]=true;});});
+  var items=Object.keys(seen).length;
   return{rev:rev,orders:ss.length,cost:cost,profit:rev-cost,paid:paid,change:change,items:items};
 }
 function statsBlock(st){
@@ -1267,7 +1268,7 @@ function statsBlock(st){
     +'<div class="sc"><div class="sl">Tiền thu vào</div><div class="sv" style="font-size:15px">'+fm(st.paid)+'</div></div>'
     +'<div class="sc"><div class="sl">Tiền thối</div><div class="sv r" style="font-size:15px">'+fm(st.change)+'</div></div>'
     +'<div class="sc"><div class="sl">Số đơn</div><div class="sv" style="font-size:15px">'+st.orders+'</div></div>'
-    +'<div class="sc"><div class="sl">Số mặt hàng</div><div class="sv" style="font-size:15px">'+st.items.toFixed(1).replace(/\.0$/,'')+'</div></div>'
+    +'<div class="sc"><div class="sl">Số mặt hàng</div><div class="sv" style="font-size:15px">'+st.items+'</div></div>'
     +'</div>';
 }
 function saleRows(ss){
