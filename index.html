@@ -592,6 +592,15 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
   </div>
 </div>
 
+<!-- MODAL: CHI TIẾT NGÀY -->
+<div class="ovl" id="ovl-day">
+  <div class="sht">
+    <div class="drag"></div>
+    <div class="sh-title" id="day-title">Chi tiết ngày</div>
+    <div id="day-body"></div>
+  </div>
+</div>
+
 <!-- SUCCESS -->
 <div class="sov" id="sov">
   <div style="font-size:64px;margin-bottom:10px">✅</div>
@@ -1287,19 +1296,58 @@ function shiftMonth(d){
   curMonthView=y+'-'+String(m).padStart(2,'0');
   renderMonth();
 }
+function showDayDetail(date){
+  var ss=sales.filter(function(s){return s.date===date;});
+  var d=new Date(date+'T00:00');
+  var title=d.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('day-title').textContent='📅 '+title;
+  var st=calcStats(ss);
+  var body='<div class="sgrid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'
+    +'<div class="sc"><div class="sl">Doanh thu</div><div class="sv b" style="font-size:15px">'+fm(st.rev)+'</div></div>'
+    +'<div class="sc"><div class="sl">Lợi nhuận</div><div class="sv g" style="font-size:15px">'+fm(st.profit)+'</div></div>'
+    +'<div class="sc"><div class="sl">Số đơn</div><div class="sv" style="font-size:15px">'+st.orders+'</div></div>'
+    +'<div class="sc"><div class="sl">Tiền thối</div><div class="sv r" style="font-size:15px">'+fm(st.change)+'</div></div>'
+    +'</div>';
+  if(ss.length){
+    body+='<div class="sttl">Danh sách đơn hàng</div>';
+    body+=[].concat(ss).reverse().map(function(s){
+      return'<div class="ms" style="margin-bottom:8px">'
+        +'<div class="ms-hd"><div class="ms-t">🕐 '+fdt(s.ts)+'</div><div class="ms-tot">'+fm(s.total)+'</div></div>'
+        +'<div style="font-size:12px;color:var(--mu);margin-bottom:6px">'+s.items.map(function(i){
+          return'<div style="display:flex;justify-content:space-between;padding:2px 0">'
+            +'<span>'+i.name+' · '+fmn(i.qty)+' '+i.unitName+'</span>'
+            +'<strong>'+fm(i.unitPrice*i.qty)+'</strong></div>';
+        }).join('')+'</div>'
+        +'<div style="font-size:11px;color:var(--mu);display:flex;gap:12px">'
+        +'<span>Thu: '+fm(s.paid||s.total)+'</span><span>Thối: '+fm(s.change||0)+'</span></div>'
+        +'</div>';
+    }).join('');
+  }
+  document.getElementById('day-body').innerHTML=body;
+  openOvl('ovl-day');
+}
+
 function renderMonth(){
   var ss=sales.filter(function(s){return s.month===curMonthView;}); var st=calcStats(ss);
   var byDay={};ss.forEach(function(s){if(!byDay[s.date])byDay[s.date]={rev:0,orders:0};byDay[s.date].rev+=s.total;byDay[s.date].orders++;});
   var days=Object.keys(byDay).sort().reverse();
   var isCur=curMonthView===tm();
-  var nav='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+  var nav='<div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:10px;padding:8px 12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
     +'<button class="btn bo bsm" onclick="shiftMonth(-1)">‹ Trước</button>'
-    +'<div style="font-size:14px;font-weight:700">'+fmMonth(curMonthView)+'</div>'
-    +'<button class="btn bo bsm" onclick="shiftMonth(1)"'+(isCur?' disabled style="opacity:.4"':'')+'>Sau ›</button>'
+    +'<div style="font-size:14px;font-weight:700;color:var(--tx)">'+fmMonth(curMonthView)+'</div>'
+    +'<button class="btn bo bsm" onclick="shiftMonth(1)" '+(isCur?'disabled style="opacity:.35;pointer-events:none"':'')+'>Sau ›</button>'
     +'</div>';
-  document.getElementById('rp-month').innerHTML=nav+statsBlock(st)+(days.length?'<div class="sttl">Theo ngày</div><div class="card" style="padding:0 13px">'+days.map(function(d){
-    return'<div class="li"><div class="li-i"><div class="li-n">'+new Date(d+'T00:00').toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit'})+'</div><div class="li-s">'+byDay[d].orders+' đơn</div></div><div class="li-r"><div class="lip" style="color:var(--g)">'+fm(byDay[d].rev)+'</div></div></div>';
-  }).join('')+'</div>':'<div class="empty">Chưa có đơn nào tháng '+fmMonth(curMonthView)+'</div>');
+  var dayRows=days.length?'<div class="sttl">Theo ngày — bấm để xem chi tiết</div><div class="card" style="padding:0 13px">'
+    +days.map(function(d){
+      var dl=new Date(d+'T00:00').toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit'});
+      return'<div class="li" style="cursor:pointer" onclick="showDayDetail(\''+d+'\')">'
+        +'<div class="li-i"><div class="li-n">'+dl+'</div><div class="li-s">'+byDay[d].orders+' đơn · Bấm để xem chi tiết</div></div>'
+        +'<div class="li-r"><div class="lip" style="color:var(--g)">'+fm(byDay[d].rev)+'</div>'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>'
+        +'</div>';
+    }).join('')+'</div>'
+    :'<div class="empty">Chưa có đơn nào '+fmMonth(curMonthView)+'</div>';
+  document.getElementById('rp-month').innerHTML=nav+statsBlock(st)+dayRows;
 }
 function renderAllHist(){ document.getElementById('rp-all').innerHTML=saleRows(sales); }
 
