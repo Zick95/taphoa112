@@ -14,9 +14,13 @@
 <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAADkDFNAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4B//79AAAAJklEQVR42mL4z8BQDwAEgAF/QualIQAAAABJRU5ErkJggg==">
 <link rel="manifest" href="manifest.json">
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-/* iOS: mọi element có onclick cần cursor:pointer để nhận touch */
 button,a,[onclick],.pc,.utab,.qamt,.bni,.ovl,.cbg,.ms{cursor:pointer}
 :root{
   --p:#2563eb;--pd:#1d4ed8;--g:#16a34a;--d:#dc2626;--w:#d97706;
@@ -29,11 +33,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   background:var(--bg);color:var(--tx);min-height:100vh;
   padding-top:var(--sat)}
 
+/* ===== LOGIN SCREEN ===== */
+#loginScreen{
+  position:fixed;inset:0;background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%);
+  z-index:9999;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:24px;
+}
+.login-box{
+  background:#fff;border-radius:20px;padding:32px 24px;
+  width:100%;max-width:360px;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo .icon{font-size:52px;margin-bottom:8px}
+.login-logo h2{font-size:22px;font-weight:800;color:var(--tx)}
+.login-logo p{font-size:13px;color:var(--mu);margin-top:4px}
+.login-err{color:var(--d);font-size:12px;font-weight:600;
+  background:#fef2f2;border-radius:8px;padding:8px 12px;
+  margin-bottom:12px;display:none}
+
 /* HEADER */
 .hdr{position:fixed;top:var(--sat);left:0;right:0;height:var(--hdr);
   background:var(--p);color:#fff;display:flex;align-items:center;
-  padding:0 16px;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.hdr h1{font-size:18px;font-weight:700}
+  padding:0 12px 0 16px;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);gap:8px}
+.hdr h1{font-size:18px;font-weight:700;flex:1}
+#logoutBtn{display:none;align-items:center;gap:5px;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+  color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;
+  white-space:nowrap}
+#syncDot{width:7px;height:7px;border-radius:50%;background:#4ade80;
+  display:inline-block;margin-right:3px}
+#syncDot.off{background:#94a3b8}
 
 /* BOTTOM NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
@@ -131,7 +161,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
 .drag{width:48px;height:5px;background:#cbd5e1;border-radius:99px;
   margin:0 auto 10px;touch-action:none;
-  padding:12px 50px; /* vùng chạm lớn hơn, dễ bấm */
+  padding:12px 50px;
   box-sizing:content-box;background-clip:content-box}
 .sh-title{font-size:16px;font-weight:700;margin-bottom:14px}
 
@@ -289,7 +319,38 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 </head>
 <body>
 
-<div class="hdr"><h1>🏪 Tạp hóa 112</h1></div>
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="icon">🏪</div>
+      <h2>Tạp hóa 112</h2>
+      <p>Đăng nhập để tiếp tục</p>
+    </div>
+    <div id="loginErr" class="login-err"></div>
+    <div class="fg">
+      <label class="lbl">Tài khoản (Email)</label>
+      <input type="email" id="loginEmail" placeholder="email@example.com" autocomplete="email" inputmode="email">
+    </div>
+    <div class="fg">
+      <label class="lbl">Mật khẩu</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn bp bbl" id="loginBtn" onclick="doLogin()" style="height:48px;font-size:15px;margin-top:4px">
+      Đăng nhập
+    </button>
+  </div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<div class="hdr">
+  <h1>🏪 Tạp hóa 112</h1>
+  <button id="logoutBtn" onclick="doLogout()">
+    <span id="syncDot"></span>
+    <span id="userLabel"></span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </button>
+</div>
 
 <!-- BÁN HÀNG -->
 <div class="pg on" id="pg-sell">
@@ -341,7 +402,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
   <div class="tbbar">
     <button class="tbbtn on" id="mtb-sales"   onclick="switchMgmt('sales')">📋 Hóa đơn</button>
     <button class="tbbtn"    id="mtb-imports"  onclick="switchMgmt('imports')">📦 Nhập hàng</button>
-    <button class="tbbtn"    id="mtb-backup"   onclick="switchMgmt('backup')">💾 Backup</button>
+    <button class="tbbtn"    id="mtb-backup"   onclick="switchMgmt('backup')">☁️ Dữ liệu</button>
   </div>
   <div id="mg-sales"></div>
   <div id="mg-imports" style="display:none"></div>
@@ -458,7 +519,6 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <div class="drag"></div>
     <div class="sh-title" id="prod-modal-title">Thêm sản phẩm</div>
     <input type="hidden" id="pm-id">
-    <!-- Ảnh -->
     <div class="fg" style="text-align:center">
       <div id="pm-img-preview" onclick="document.getElementById('pm-img-input').click()"
         style="width:80px;height:80px;border-radius:12px;background:#f1f5f9;border:2px dashed var(--br);
@@ -531,7 +591,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 
 <div class="toast" id="toast"></div>
 
-<!-- HƯỚNG DẪN CÀI ĐẶT iOS (hiện lần đầu trên mobile) -->
+<!-- HƯỚNG DẪN CÀI ĐẶT iOS -->
 <div class="ios-guide" id="ios-guide" style="display:none">
   <div class="ios-guide-box">
     <h2>📱 Cài app vào màn hình chính</h2>
@@ -555,34 +615,160 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 </div>
 
 <script>
+// ==================== FIREBASE CONFIG ====================
+// Dán thông tin Firebase project của bạn vào đây:
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDb9it-jCXiqIyCIf0Lla2ZIByYtIHBiuQ",
+  authDomain: "taphoa112-af69f.firebaseapp.com",
+  projectId: "taphoa112-af69f",
+  storageBucket: "taphoa112-af69f.firebasestorage.app",
+  messagingSenderId: "530371000557",
+  appId: "1:530371000557:web:b64d35edb69aed44f8f4e4",
+  measurementId: "G-RTBR08R7ZY"
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const docRef = db.collection('tapho112').doc('main');
+
 // ==================== DATA ====================
 function lsGet(k){ try{return localStorage.getItem(k)}catch(e){return null} }
 function lsSet(k,v){ try{localStorage.setItem(k,v)}catch(e){} }
 
-function loadData(){
-  try{
-    const raw = lsGet('tapho112');
-    if(raw){ const d=JSON.parse(raw); if(d&&d.products&&d.products.length) return d; }
-  }catch(e){}
-  return {v:1, products:[], sales:[], imports:[]};
-}
-
-let D = loadData();
-let products = D.products;
-let sales    = D.sales;
-let imports  = D.imports;
-let cart     = [];
-
+let products=[], sales=[], imports=[];
+let cart=[];
 let curPage='sell', curInvTab='stock', curRepTab='today', curMgmtTab='sales';
 let atcProd=null, atcUnit=null;
 let editSaleId=null, editItems=[];
 let impUnit=null, impSelectedProd=null;
 let bigOn=false, decOn=false;
 let currentImage=null;
+let _syncUnsubscribe=null;
+let _saveTimer=null;
 
 function save(){
-  const d={v:1,products,sales,imports};
+  var d={v:1,products:products,sales:sales,imports:imports};
   lsSet('tapho112', JSON.stringify(d));
+  if(_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(function(){
+    docRef.set(d)
+      .then(function(){ setSyncDot(true); })
+      .catch(function(e){ console.warn('Lỗi lưu cloud:',e); setSyncDot(false); });
+  }, 600);
+}
+
+function setSyncDot(ok){
+  var dot=document.getElementById('syncDot');
+  if(dot) dot.className=ok?'':'off';
+}
+
+function renderCurrentPage(){
+  if(curPage==='sell'){renderSell();checkLow();}
+  else if(curPage==='products') renderProdList();
+  else if(curPage==='inv') renderInv();
+  else if(curPage==='report') renderRep();
+  else if(curPage==='mgmt') renderMgmt();
+}
+
+function startSync(){
+  if(_syncUnsubscribe) _syncUnsubscribe();
+  _syncUnsubscribe=docRef.onSnapshot(function(snap){
+    if(!snap.exists) return;
+    if(snap.metadata.hasPendingWrites) return; // chỉ xử lý update từ thiết bị khác
+    var d=snap.data();
+    products.length=0; (d.products||[]).forEach(function(x){products.push(x);});
+    sales.length=0;    (d.sales||[]).forEach(function(x){sales.push(x);});
+    imports.length=0;  (d.imports||[]).forEach(function(x){imports.push(x);});
+    lsSet('tapho112', JSON.stringify({v:1,products:products,sales:sales,imports:imports}));
+    setSyncDot(true);
+    renderCurrentPage();
+    checkLow();
+  }, function(err){ console.warn('Sync lỗi:',err); setSyncDot(false); });
+}
+
+function initApp(){
+  // Sample data nếu lần đầu
+  if(!products.length){
+    [{name:'Nước ngọt Pepsi 330ml',category:'Đồ uống',baseUnit:'lon',bigUnit:'thùng',bigRatio:24,sellPrice:10000,bigPrice:216000,buyPrice:7000,stock:48,lowStock:12},
+     {name:'Mì tôm Hảo Hảo',category:'Mì gói',baseUnit:'gói',bigUnit:'thùng',bigRatio:30,sellPrice:5000,bigPrice:135000,buyPrice:3500,stock:90,lowStock:20},
+     {name:'Bia Tiger 330ml',category:'Bia rượu',baseUnit:'lon',bigUnit:'thùng',bigRatio:24,sellPrice:16000,bigPrice:360000,buyPrice:12000,stock:48,lowStock:6},
+     {name:'Gạo ST25',category:'Gạo',baseUnit:'kg',allowDecimal:true,sellPrice:30000,buyPrice:25000,stock:50,lowStock:5},
+     {name:'Dầu ăn Neptune',category:'Gia vị',baseUnit:'lít',allowDecimal:true,sellPrice:45000,buyPrice:38000,stock:20,lowStock:2},
+     {name:'Bánh Oreo',category:'Bánh kẹo',baseUnit:'gói',sellPrice:12000,buyPrice:9000,stock:30,lowStock:5}
+    ].forEach(function(s){products.push(Object.assign({id:gid(),bigUnit:null,bigRatio:null,bigPrice:null,allowDecimal:false,image:null},s));});
+    save();
+  }
+  document.getElementById('cartBtn').style.display='flex';
+  renderSell(); checkLow();
+  setTimeout(showIOSGuide, 1000);
+  document.querySelectorAll('.ovl').forEach(function(ovl){
+    var sheet=ovl.querySelector('.sht');
+    if(sheet) enableSwipeToClose(sheet,function(){closeOvl(ovl.id);});
+  });
+  var csh=document.querySelector('.csh');
+  if(csh) enableSwipeToClose(csh,closeCartPanel);
+  startSync();
+}
+
+// ==================== AUTH ====================
+auth.onAuthStateChanged(function(user){
+  if(user){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('logoutBtn').style.display='flex';
+    var name=user.email.split('@')[0];
+    document.getElementById('userLabel').textContent=name;
+    // Load từ local cache trước cho nhanh
+    var cached=lsGet('tapho112');
+    if(cached){
+      try{
+        var d=JSON.parse(cached);
+        if(d&&d.products){ products=d.products; sales=d.sales||[]; imports=d.imports||[]; }
+      }catch(e){}
+    }
+    // Sau đó đồng bộ từ Firestore
+    docRef.get().then(function(snap){
+      if(snap.exists){
+        var d=snap.data();
+        products=d.products||[]; sales=d.sales||[]; imports=d.imports||[];
+      }
+      initApp();
+    }).catch(function(){ initApp(); }); // fallback offline
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('logoutBtn').style.display='none';
+    if(_syncUnsubscribe){ _syncUnsubscribe(); _syncUnsubscribe=null; }
+  }
+});
+
+function doLogin(){
+  var email=document.getElementById('loginEmail').value.trim();
+  var pass=document.getElementById('loginPass').value;
+  var errEl=document.getElementById('loginErr');
+  var btn=document.getElementById('loginBtn');
+  errEl.style.display='none';
+  if(!email||!pass){ errEl.textContent='Vui lòng nhập đầy đủ thông tin'; errEl.style.display='block'; return; }
+  btn.textContent='Đang đăng nhập...'; btn.disabled=true;
+  auth.signInWithEmailAndPassword(email,pass).catch(function(e){
+    var msg=
+      (e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') ? 'Sai mật khẩu hoặc tài khoản' :
+      e.code==='auth/user-not-found' ? 'Tài khoản không tồn tại' :
+      e.code==='auth/invalid-email'  ? 'Email không hợp lệ' :
+      e.code==='auth/too-many-requests' ? 'Đăng nhập quá nhiều lần, thử lại sau' :
+      'Lỗi: '+e.message;
+    errEl.textContent=msg; errEl.style.display='block';
+    btn.textContent='Đăng nhập'; btn.disabled=false;
+  });
+}
+
+document.getElementById('loginPass').addEventListener('keydown',function(e){
+  if(e.key==='Enter') doLogin();
+});
+
+function doLogout(){
+  if(!confirm('Đăng xuất khỏi tài khoản?')) return;
+  products=[]; sales=[]; imports=[];
+  auth.signOut();
 }
 
 // ==================== HELPERS ====================
@@ -1162,9 +1348,17 @@ function deleteImport(id){
   save(); renderMgmtImports(); toast('✓ Đã xóa, kho đã điều chỉnh');
 }
 function renderBackup(){
+  var user=auth.currentUser;
   document.getElementById('mg-backup').innerHTML=
-    '<div class="card"><div class="sttl">📤 Xuất backup JSON</div>'
-    +'<p style="font-size:13px;color:var(--mu);margin-bottom:12px;line-height:1.6">Xuất dữ liệu ra file JSON để backup hoặc chuyển sang thiết bị khác.</p>'
+    '<div class="card" style="background:#f0fdf4;border:1px solid #86efac">'
+    +'<div class="sttl" style="color:#15803d">☁️ Đồng bộ đám mây</div>'
+    +'<div style="font-size:13px;color:#15803d;line-height:1.8">'
+    +'<div>✅ Dữ liệu lưu tự động trên Firebase</div>'
+    +'<div>✅ Đồng bộ realtime giữa nhiều thiết bị</div>'
+    +'<div style="margin-top:6px;color:var(--mu);font-size:12px">Tài khoản: <strong>'+(user?user.email:'--')+'</strong></div>'
+    +'</div></div>'
+    +'<div class="card"><div class="sttl">📤 Xuất backup JSON</div>'
+    +'<p style="font-size:13px;color:var(--mu);margin-bottom:12px;line-height:1.6">Xuất dữ liệu ra file JSON để backup thêm.</p>'
     +'<button class="btn bp bbl" onclick="exportJSON()">📤 Xuất file JSON</button></div>'
     +'<div class="card"><div class="sttl">📥 Nhập backup JSON</div>'
     +'<div class="fg" style="margin-bottom:10px"><input type="file" id="importFile" accept=".json" style="font-size:13px;padding:8px"></div>'
@@ -1199,42 +1393,30 @@ function importJSON(){
 // ==================== SWIPE TO CLOSE ====================
 function enableSwipeToClose(sheetEl, closeFn) {
   var startY = 0, curY = 0;
-  // Gắn touchstart vào drag handle — tránh xung đột với scroll content
   var handle = sheetEl.querySelector('.drag') || sheetEl;
-
   function onMove(e) {
     curY = e.touches[0].clientY;
     var d = Math.max(0, curY - startY);
     sheetEl.style.transform = 'translateY(' + d + 'px)';
-    e.preventDefault(); // chặn scroll khi đang kéo
+    e.preventDefault();
   }
-
   function onEnd() {
-    // Gỡ listener ngay sau khi xong — không ảnh hưởng scroll lúc bình thường
     document.removeEventListener('touchmove', onMove, {passive: false});
     document.removeEventListener('touchend', onEnd);
-    sheetEl.style.overflowY = 'auto'; // khôi phục scroll
+    sheetEl.style.overflowY = 'auto';
     var d = curY - startY;
     sheetEl.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
     if (d > 80) {
       sheetEl.style.transform = 'translateY(110%)';
-      setTimeout(function() {
-        sheetEl.style.transform = '';
-        sheetEl.style.transition = '';
-        closeFn();
-      }, 260);
+      setTimeout(function() { sheetEl.style.transform = ''; sheetEl.style.transition = ''; closeFn(); }, 260);
     } else {
       sheetEl.style.transform = 'translateY(0)';
       setTimeout(function() { sheetEl.style.transition = ''; }, 300);
     }
   }
-
   handle.addEventListener('touchstart', function(e) {
-    startY = e.touches[0].clientY;
-    curY = startY;
-    sheetEl.style.transition = 'none';
-    sheetEl.style.overflowY = 'hidden'; // tạm khóa scroll khi bắt đầu kéo
-    // Gắn động — passive:false để preventDefault() hoạt động
+    startY = e.touches[0].clientY; curY = startY;
+    sheetEl.style.transition = 'none'; sheetEl.style.overflowY = 'hidden';
     document.addEventListener('touchmove', onMove, {passive: false});
     document.addEventListener('touchend', onEnd);
   }, {passive: true});
@@ -1243,36 +1425,9 @@ function enableSwipeToClose(sheetEl, closeFn) {
 // ==================== SERVICE WORKER ====================
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js').catch(function(){});
   });
 }
-
-// ==================== SAMPLE DATA ====================
-if(!products.length){
-  [{name:'Nước ngọt Pepsi 330ml',category:'Đồ uống',baseUnit:'lon',bigUnit:'thùng',bigRatio:24,sellPrice:10000,bigPrice:216000,buyPrice:7000,stock:48,lowStock:12},
-   {name:'Mì tôm Hảo Hảo',category:'Mì gói',baseUnit:'gói',bigUnit:'thùng',bigRatio:30,sellPrice:5000,bigPrice:135000,buyPrice:3500,stock:90,lowStock:20},
-   {name:'Bia Tiger 330ml',category:'Bia rượu',baseUnit:'lon',bigUnit:'thùng',bigRatio:24,sellPrice:16000,bigPrice:360000,buyPrice:12000,stock:48,lowStock:6},
-   {name:'Gạo ST25',category:'Gạo',baseUnit:'kg',allowDecimal:true,sellPrice:30000,buyPrice:25000,stock:50,lowStock:5},
-   {name:'Dầu ăn Neptune',category:'Gia vị',baseUnit:'lít',allowDecimal:true,sellPrice:45000,buyPrice:38000,stock:20,lowStock:2},
-   {name:'Bánh Oreo',category:'Bánh kẹo',baseUnit:'gói',sellPrice:12000,buyPrice:9000,stock:30,lowStock:5}
-  ].forEach(function(s){products.push(Object.assign({id:gid(),bigUnit:null,bigRatio:null,bigPrice:null,allowDecimal:false,image:null},s));});
-  save();
-}
-
-// ==================== INIT ====================
-document.getElementById('cartBtn').style.display='flex';
-renderSell();
-checkLow();
-setTimeout(showIOSGuide, 1000);
-
-// Gắn swipe-to-close cho tất cả bottom sheets
-document.querySelectorAll('.ovl').forEach(function(ovl) {
-  var sheet = ovl.querySelector('.sht');
-  if (sheet) enableSwipeToClose(sheet, function() { closeOvl(ovl.id); });
-});
-// Cart panel riêng (không dùng .ovl)
-var csh = document.querySelector('.csh');
-if (csh) enableSwipeToClose(csh, closeCartPanel);
 </script>
 </body>
 </html>
