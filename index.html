@@ -706,7 +706,21 @@ function startSync(){
   }, function(err){ console.warn('Sync lỗi:',err); setSyncDot(false); });
 }
 
+function migrateDates(){
+  // Sửa date/month của các đơn cũ bị lưu theo UTC thay vì giờ địa phương
+  var changed=false;
+  sales.forEach(function(s){
+    if(!s.ts) return;
+    var d=new Date(s.ts);
+    var ld=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var lm=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(s.date!==ld||s.month!==lm){ s.date=ld; s.month=lm; changed=true; }
+  });
+  if(changed){ save(); console.log('Đã sửa ngày cho '+sales.length+' đơn hàng'); }
+}
+
 function initApp(){
+  migrateDates();
   // Sample data nếu lần đầu
   if(!products.length){
     [{name:'Nước ngọt Pepsi 330ml',category:'Đồ uống',baseUnit:'lon',bigUnit:'thùng',bigRatio:24,sellPrice:10000,bigPrice:216000,buyPrice:7000,stock:48,lowStock:12},
@@ -794,7 +808,7 @@ function doLogout(){
 const gid  = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const fm   = n  => Number(n||0).toLocaleString('vi-VN')+'đ';
 const fmn  = n  => { const x=parseFloat(n||0); return x%1===0?String(x):x.toFixed(2).replace(/\.?0+$/,''); };
-const td   = () => new Date().toISOString().split('T')[0];
+const td   = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const tm   = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); };
 const fdt  = ts => { const d=new Date(ts); return d.toLocaleDateString('vi-VN')+' '+d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}); };
 
