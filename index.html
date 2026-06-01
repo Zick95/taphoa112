@@ -1279,13 +1279,27 @@ function saleRows(ss){
   }).join('')+'</div>';
 }
 function renderToday(){ var ss=sales.filter(function(s){return s.date===td();}); document.getElementById('rp-today').innerHTML=statsBlock(calcStats(ss))+saleRows(ss); }
+var curMonthView=tm();
+function fmMonth(ym){var p=ym.split('-');return'Tháng '+parseInt(p[1])+'/'+p[0];}
+function shiftMonth(d){
+  var p=curMonthView.split('-'),y=parseInt(p[0]),m=parseInt(p[1])+d;
+  if(m>12){m=1;y++;}else if(m<1){m=12;y--;}
+  curMonthView=y+'-'+String(m).padStart(2,'0');
+  renderMonth();
+}
 function renderMonth(){
-  var ss=sales.filter(function(s){return s.month===tm();}); var st=calcStats(ss);
+  var ss=sales.filter(function(s){return s.month===curMonthView;}); var st=calcStats(ss);
   var byDay={};ss.forEach(function(s){if(!byDay[s.date])byDay[s.date]={rev:0,orders:0};byDay[s.date].rev+=s.total;byDay[s.date].orders++;});
   var days=Object.keys(byDay).sort().reverse();
-  document.getElementById('rp-month').innerHTML=statsBlock(st)+(days.length?'<div class="sttl">Theo ngày</div><div class="card" style="padding:0 13px">'+days.map(function(d){
+  var isCur=curMonthView===tm();
+  var nav='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +'<button class="btn bo bsm" onclick="shiftMonth(-1)">‹ Trước</button>'
+    +'<div style="font-size:14px;font-weight:700">'+fmMonth(curMonthView)+'</div>'
+    +'<button class="btn bo bsm" onclick="shiftMonth(1)"'+(isCur?' disabled style="opacity:.4"':'')+'>Sau ›</button>'
+    +'</div>';
+  document.getElementById('rp-month').innerHTML=nav+statsBlock(st)+(days.length?'<div class="sttl">Theo ngày</div><div class="card" style="padding:0 13px">'+days.map(function(d){
     return'<div class="li"><div class="li-i"><div class="li-n">'+new Date(d+'T00:00').toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit'})+'</div><div class="li-s">'+byDay[d].orders+' đơn</div></div><div class="li-r"><div class="lip" style="color:var(--g)">'+fm(byDay[d].rev)+'</div></div></div>';
-  }).join('')+'</div>':'<div class="empty">Chưa có đơn nào tháng này</div>');
+  }).join('')+'</div>':'<div class="empty">Chưa có đơn nào tháng '+fmMonth(curMonthView)+'</div>');
 }
 function renderAllHist(){ document.getElementById('rp-all').innerHTML=saleRows(sales); }
 
