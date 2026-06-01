@@ -1340,14 +1340,18 @@ function renderMonth(){
   var dayRows=days.length?'<div class="sttl">Theo ngày — bấm để xem chi tiết</div><div class="card" style="padding:0 13px">'
     +days.map(function(d){
       var dl=new Date(d+'T00:00').toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit'});
-      return'<div class="li" style="cursor:pointer" onclick="showDayDetail(\''+d+'\')">'
-        +'<div class="li-i"><div class="li-n">'+dl+'</div><div class="li-s">'+byDay[d].orders+' đơn · Bấm để xem chi tiết</div></div>'
-        +'<div class="li-r"><div class="lip" style="color:var(--g)">'+fm(byDay[d].rev)+'</div>'
+      return'<button class="li" data-day="'+d+'" type="button" style="border:none;background:transparent;width:100%;text-align:left;min-height:50px;padding:11px 0;display:flex;align-items:center;gap:10px">'
+        +'<div class="li-i"><div class="li-n">'+dl+'</div><div class="li-s">'+byDay[d].orders+' đơn</div></div>'
+        +'<div class="li-r" style="display:flex;align-items:center;gap:4px"><div class="lip" style="color:var(--g)">'+fm(byDay[d].rev)+'</div>'
         +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>'
-        +'</div>';
+        +'</button>';
     }).join('')+'</div>'
     :'<div class="empty">Chưa có đơn nào '+fmMonth(curMonthView)+'</div>';
   document.getElementById('rp-month').innerHTML=nav+statsBlock(st)+dayRows;
+  // Gắn event listener sau khi render
+  document.querySelectorAll('[data-day]').forEach(function(btn){
+    btn.addEventListener('click',function(){ showDayDetail(btn.dataset.day); });
+  });
 }
 function renderAllHist(){ document.getElementById('rp-all').innerHTML=saleRows(sales); }
 
