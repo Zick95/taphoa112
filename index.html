@@ -69,13 +69,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   background:var(--p);color:#fff;display:flex;align-items:center;
   padding:0 12px 0 16px;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);gap:8px}
 .hdr h1{font-size:18px;font-weight:700;flex:1}
-#logoutBtn{display:none;align-items:center;gap:5px;
-  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-  color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;
-  white-space:nowrap}
-#syncDot{width:7px;height:7px;border-radius:50%;background:#4ade80;
-  display:inline-block;margin-right:3px}
-#syncDot.off{background:#94a3b8}
+#syncDot{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block}
+#syncDot.off{background:#f87171}
 
 /* BOTTOM NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
@@ -91,7 +86,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 
 /* PAGES */
 .pg{display:none;
-  padding:calc(var(--sat) + var(--hdr) + 12px) 12px calc(var(--nav) + var(--sab) + 76px) 12px}
+  padding:calc(var(--hdr) + 12px) 12px calc(var(--nav) + var(--sab) + 76px) 12px}
 .pg.on{display:block}
 
 /* CARDS */
@@ -364,11 +359,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 <!-- ===== HEADER ===== -->
 <div class="hdr">
   <h1>🏪 Tạp hóa 112</h1>
-  <button id="logoutBtn" onclick="doLogout()">
-    <span id="syncDot"></span>
-    <span id="userLabel"></span>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-  </button>
+  <span id="syncDot" style="margin-left:auto"></span>
 </div>
 
 <!-- BÁN HÀNG -->
@@ -737,9 +728,6 @@ auth.onAuthStateChanged(function(user){
   if(user){
     hideLoading();
     document.getElementById('loginScreen').style.display='none';
-    document.getElementById('logoutBtn').style.display='flex';
-    var name=user.email.split('@')[0];
-    document.getElementById('userLabel').textContent=name;
     // Load từ local cache trước cho nhanh
     var cached=lsGet('tapho112');
     if(cached){
@@ -759,7 +747,6 @@ auth.onAuthStateChanged(function(user){
   } else {
     hideLoading();
     document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('logoutBtn').style.display='none';
     if(_syncUnsubscribe){ _syncUnsubscribe(); _syncUnsubscribe=null; }
   }
 });
@@ -1373,12 +1360,22 @@ function deleteImport(id){
 function renderBackup(){
   var user=auth.currentUser;
   document.getElementById('mg-backup').innerHTML=
-    '<div class="card" style="background:#f0fdf4;border:1px solid #86efac">'
+    '<div class="card" style="background:#eff6ff;border:1px solid #bfdbfe">'
+    +'<div class="sttl" style="color:#1d4ed8">👤 Tài khoản</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'
+    +'<div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--tx)">'+(user?user.email:'--')+'</div>'
+    +'<div style="font-size:11px;color:var(--mu);margin-top:2px;display:flex;align-items:center;gap:4px">'
+    +'<span id="mgSyncDot" style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block"></span>'
+    +'Đã kết nối Firebase</div>'
+    +'</div>'
+    +'<button class="btn bo bsm" style="color:var(--d);flex-shrink:0" onclick="doLogout()">⬡ Đăng xuất</button>'
+    +'</div></div>'
+    +'<div class="card" style="background:#f0fdf4;border:1px solid #86efac">'
     +'<div class="sttl" style="color:#15803d">☁️ Đồng bộ đám mây</div>'
     +'<div style="font-size:13px;color:#15803d;line-height:1.8">'
     +'<div>✅ Dữ liệu lưu tự động trên Firebase</div>'
     +'<div>✅ Đồng bộ realtime giữa nhiều thiết bị</div>'
-    +'<div style="margin-top:6px;color:var(--mu);font-size:12px">Tài khoản: <strong>'+(user?user.email:'--')+'</strong></div>'
     +'</div></div>'
     +'<div class="card"><div class="sttl">📤 Xuất backup JSON</div>'
     +'<p style="font-size:13px;color:var(--mu);margin-bottom:12px;line-height:1.6">Xuất dữ liệu ra file JSON để backup thêm.</p>'
