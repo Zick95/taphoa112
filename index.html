@@ -406,7 +406,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <div id="scan-status">Hướng camera vào mã vạch sản phẩm</div>
     <div id="scan-manual-wrap">
       <input id="scan-manual" type="text" placeholder="Hoặc nhập mã vạch thủ công..." inputmode="numeric">
-      <button id="scan-manual-btn" onclick="onBarcodeFound(document.getElementById('scan-manual').value.trim())">Tìm</button>
+      <button id="scan-manual-btn">Tìm</button>
     </div>
   </div>
 </div>
@@ -584,7 +584,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <div class="fg"><div class="lbl">Mã vạch (barcode)</div>
       <div style="display:flex;gap:6px">
         <input type="text" id="pm-barcode" placeholder="Quét hoặc nhập mã vạch..." inputmode="numeric" style="flex:1">
-        <button type="button" class="btn bo bsm" onclick="openScannerForProduct()" style="flex-shrink:0;padding:0 10px">
+        <button type="button" id="pm-barcode-scan" class="btn bo bsm" style="flex-shrink:0;padding:0 10px">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="17" y1="12" x2="17" y2="12.01"/><line x1="7" y1="9" x2="7" y2="15"/></svg>
         </button>
       </div>
@@ -843,6 +843,12 @@ function doLogin(){
 
 document.getElementById('loginPass').addEventListener('keydown',function(e){
   if(e.key==='Enter') doLogin();
+});
+document.getElementById('scan-manual-btn').addEventListener('click',function(){
+  onBarcodeFound(document.getElementById('scan-manual').value.trim());
+});
+document.getElementById('scan-manual').addEventListener('keydown',function(e){
+  if(e.key==='Enter') onBarcodeFound(this.value.trim());
 });
 
 function doLogout(){
@@ -1152,6 +1158,9 @@ document.getElementById('pm-img-input').addEventListener('change',function(){
 });
 document.getElementById('pm-img-remove').addEventListener('click',function(e){
   e.stopPropagation(); document.getElementById('pm-img-input').value=''; setImgPreview(null);
+});
+document.getElementById('pm-barcode-scan').addEventListener('click',function(e){
+  e.stopPropagation(); openScannerForProduct();
 });
 
 // ==================== PRODUCT MODAL ====================
