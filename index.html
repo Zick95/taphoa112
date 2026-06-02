@@ -1580,15 +1580,33 @@ function closeScanner(){
 function _startScanner(){
   _stopScanner();
   try{
-    _scanner=new Html5Qrcode('reader');
-    var cfg={fps:10,qrbox:function(w,h){var s=Math.min(w,h)*0.7;return{width:s,height:Math.round(s*0.5)};}};
+    // Hỗ trợ cả barcode 1D (EAN-13, Code128...) và QR code
+    var formats=[
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ];
+    _scanner=new Html5Qrcode('reader',{formatsToSupport:formats,verbose:false});
+    // Khung quét nằm ngang, phù hợp barcode 1D trên hàng hóa
+    var cfg={
+      fps:15,
+      qrbox:function(w,h){
+        return{width:Math.round(w*0.88),height:Math.round(h*0.28)};
+      },
+      aspectRatio:1.7778 // 16:9
+    };
     _scanner.start({facingMode:'environment'},cfg,function(code){
       onBarcodeFound(code);
     },function(){}).catch(function(e){
       document.getElementById('scan-status').textContent='⚠️ Không thể mở camera: '+e;
     });
   }catch(e){
-    document.getElementById('scan-status').textContent='⚠️ Trình duyệt không hỗ trợ scanner';
+    document.getElementById('scan-status').textContent='⚠️ Lỗi: '+e;
   }
 }
 function _stopScanner(){
