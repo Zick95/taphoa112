@@ -14,8 +14,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAADkDFNAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4B//79AAAAJklEQVR42mL4z8BQDwAEgAF/QualIQAAAABJRU5ErkJggg==">
 <link rel="manifest" href="manifest.json">
 
-<!-- ZXing: fallback barcode scanner cho iOS < 17 -->
-<script src="https://unpkg.com/@zxing/library@0.14.3/umd/index.min.js"></script>
+<!-- html5-qrcode: barcode scanner hoạt động trên iOS Safari -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -134,12 +134,17 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 #scan-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
 #reader{flex:1;width:100%;overflow:hidden}
 #scanModal-footer{padding:16px;padding-bottom:calc(16px + var(--sab));background:#000;color:#fff;text-align:center;flex-shrink:0}
-#scan-overlay{position:absolute;inset:0;pointer-events:none}
+#scan-overlay{position:fixed;inset:0;pointer-events:none;z-index:501}
 #scan-line{position:absolute;left:10%;right:10%;height:2px;background:rgba(37,99,235,.8);
   box-shadow:0 0 8px rgba(37,99,235,.9);animation:scanline 2s linear infinite}
 @keyframes scanline{0%{top:20%}50%{top:75%}100%{top:20%}}
 #reader video{width:100%!important;height:100%!important;object-fit:cover}
 #reader canvas{display:none!important;width:0!important;height:0!important}
+/* Ẩn UI thừa của html5-qrcode */
+#reader img{display:none!important}
+#reader button{display:none!important}
+#reader select{display:none!important}
+#reader>div:not([id]){display:none!important}
 #scan-status{font-size:13px;opacity:.7;margin-bottom:8px}
 #scan-manual-wrap{display:flex;gap:8px}
 #scan-manual{flex:1;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:10px 12px;font-size:14px;color:#fff;background:rgba(255,255,255,.1);outline:none}
@@ -408,9 +413,8 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <h2>📷 Quét mã vạch</h2>
     <button id="scan-close" onclick="closeScanner()">✕ Đóng</button>
   </div>
-  <div id="reader" style="position:relative">
-    <div id="scan-overlay"><div id="scan-line"></div></div>
-  </div>
+  <div id="reader" style="position:relative"></div>
+  <div id="scan-overlay"><div id="scan-line"></div></div>
   <div id="scanModal-footer">
     <div id="scan-status">Hướng camera vào mã vạch sản phẩm</div>
     <div id="scan-manual-wrap">
@@ -1569,9 +1573,9 @@ function importJSON(){
 }
 
 // ==================== BARCODE SCANNER ====================
-// Primary: native BarcodeDetector (iOS 17+, Chrome Android)
-// Fallback: ZXing library (iOS < 17, các trình duyệt khác)
-var _scanMode='sell', _scanning=false, _stream=null, _scanTimer=null, _zxingReader=null;
+// Primary  : native BarcodeDetector (iOS 17+, Chrome Android)
+// Fallback : html5-qrcode (iOS 15/16 Safari, các trình duyệt khác)
+var _scanMode='sell', _scanning=false, _stream=null, _scanTimer=null, _h5qr=null;
 var _lastCode='', _lastCodeTs=0;
 
 function openScanner(mode){
@@ -1588,13 +1592,22 @@ function closeScanner(){
   document.getElementById('scanModal').classList.remove('on');
 }
 
+function _onCode(code){
+  if(!code||!_scanning) return;
+  var now=Date.now();
+  if(code===_lastCode&&now-_lastCodeTs<2000) return;
+  _lastCode=code; _lastCodeTs=now;
+  if(navigator.vibrate) navigator.vibrate(80);
+  onBarcodeFound(code);
+}
+
 function _startScanner(){
   _stopScanner();
-  _scanning = true;
+  _scanning=true;
   if('BarcodeDetector' in window){
     _startNativeScanner();
-  } else if(typeof ZXing !== 'undefined'){
-    _startZXingScanner();
+  } else if(typeof Html5Qrcode!=='undefined'){
+    _startHtml5Scanner();
   } else {
     document.getElementById('scan-status').textContent='⚠️ Thiết bị không hỗ trợ quét tự động. Vui lòng nhập mã thủ công.';
   }
@@ -1602,152 +1615,70 @@ function _startScanner(){
 
 // --- Native BarcodeDetector (iOS 17+, Chrome Android) ---
 function _startNativeScanner(){
-  var readerEl = document.getElementById('reader');
-  readerEl.innerHTML = '';
+  var readerEl=document.getElementById('reader');
+  readerEl.innerHTML='';
   navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
+    video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}
   }).then(function(stream){
-    _stream = stream;
-    var video = document.createElement('video');
-    video.srcObject = stream;
-    video.setAttribute('playsinline','');
-    video.muted = true;
-    video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-    readerEl.appendChild(video);
-    return video.play().then(function(){ return video; });
-  }).then(function(video){
-    document.getElementById('scan-status').textContent = '📷 Hướng camera vào mã vạch';
-    var detector = new BarcodeDetector({
-      formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']
-    });
+    _stream=stream;
+    var v=document.createElement('video');
+    v.srcObject=stream; v.setAttribute('playsinline',''); v.muted=true;
+    v.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+    readerEl.appendChild(v);
+    return v.play().then(function(){return v;});
+  }).then(function(v){
+    document.getElementById('scan-status').textContent='📷 Hướng camera vào mã vạch';
+    var det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']});
     function loop(){
       if(!_scanning) return;
-      detector.detect(video).then(function(codes){
-        if(codes.length){
-          var code = codes[0].rawValue;
-          var now = Date.now();
-          if(code !== _lastCode || now - _lastCodeTs > 2000){
-            _lastCode = code; _lastCodeTs = now;
-            if(navigator.vibrate) navigator.vibrate(80);
-            onBarcodeFound(code);
-          }
-        }
+      det.detect(v).then(function(codes){
+        if(codes.length) _onCode(codes[0].rawValue);
       }).catch(function(){}).finally(function(){
-        if(_scanning) _scanTimer = setTimeout(loop, 250);
+        if(_scanning) _scanTimer=setTimeout(loop,250);
       });
     }
     loop();
   }).catch(function(err){
-    document.getElementById('scan-status').textContent = '⚠️ Lỗi camera: '+(err.message||err);
+    if(typeof Html5Qrcode!=='undefined') _startHtml5Scanner();
+    else document.getElementById('scan-status').textContent='⚠️ Lỗi camera: '+(err.message||err);
   });
 }
 
-// --- ZXing fallback (iOS < 17, Firefox, v.v.) ---
-function _startZXingScanner(){
-  var readerEl = document.getElementById('reader');
-  readerEl.innerHTML = '';
-  var video = document.createElement('video');
-  video.setAttribute('playsinline','');
-  video.muted = true;
-  video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-  readerEl.appendChild(video);
-
-  try {
-    var hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    _zxingReader = new ZXing.BrowserMultiFormatReader(hints);
-
-    _zxingReader.decodeFromConstraints(
-      { video:{ facingMode:'environment' } },
-      video,
-      function(result, err){
-        if(!result || !_scanning) return;
-        var code = result.getText();
-        var now = Date.now();
-        if(code !== _lastCode || now - _lastCodeTs > 2000){
-          _lastCode = code; _lastCodeTs = now;
-          if(navigator.vibrate) navigator.vibrate(80);
-          onBarcodeFound(code);
-        }
-      }
-    ).catch(function(err){
-      document.getElementById('scan-status').textContent = '⚠️ Lỗi camera: '+(err&&err.message||err);
+// --- html5-qrcode fallback (iOS 15/16, Firefox...) ---
+function _startHtml5Scanner(){
+  var readerEl=document.getElementById('reader');
+  readerEl.innerHTML='';
+  try{
+    _h5qr=new Html5Qrcode('reader',{verbose:false});
+    var fmts=[];
+    try{
+      fmts=[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.QR_CODE];
+    }catch(fe){}
+    var cfg={fps:10,qrbox:{width:280,height:120}};
+    if(fmts.length) cfg.formatsToSupport=fmts;
+    _h5qr.start(
+      {facingMode:'environment'},
+      cfg,
+      function(code){ _onCode(code); },
+      function(){}
+    ).then(function(){
+      document.getElementById('scan-status').textContent='📷 Hướng camera vào mã vạch';
+    }).catch(function(err){
+      document.getElementById('scan-status').textContent='⚠️ Lỗi camera: '+(err&&err.message||err);
     });
-
-    document.getElementById('scan-status').textContent = '📷 Hướng camera vào mã vạch';
-  } catch(e) {
-    document.getElementById('scan-status').textContent = '⚠️ Không hỗ trợ quét tự động. Nhập mã thủ công bên dưới.';
+  }catch(e){
+    document.getElementById('scan-status').textContent='⚠️ Không hỗ trợ quét tự động. Nhập mã thủ công.';
   }
 }
 
 function _stopScanner(){
-  _scanning = false;
-  if(_scanTimer){ clearTimeout(_scanTimer); _scanTimer = null; }
-  if(_zxingReader){ try{ _zxingReader.reset(); }catch(e){} _zxingReader = null; }
-  if(_stream){ _stream.getTracks().forEach(function(t){ t.stop(); }); _stream = null; }
-  var readerEl = document.getElementById('reader');
-  if(readerEl) readerEl.innerHTML = '';
+  _scanning=false;
+  if(_scanTimer){clearTimeout(_scanTimer);_scanTimer=null;}
+  if(_h5qr){try{_h5qr.stop().then(function(){try{_h5qr.clear();}catch(e){}});}catch(e){} _h5qr=null;}
+  if(_stream){_stream.getTracks().forEach(function(t){t.stop();});_stream=null;}
+  var readerEl=document.getElementById('reader');
+  if(readerEl) readerEl.innerHTML='';
 }
-
-function onBarcodeFound(code){
-  if(!code||!code.trim()) return;
-  code=code.trim();
-  if(_scanMode==='product'){
-    closeScanner();
-    document.getElementById('pm-barcode').value=code;
-    toast('✓ Mã vạch: '+code);
-    return;
-  }
-  // Bán hàng — tìm sản phẩm theo barcode
-  var p=products.find(function(x){return x.barcode&&x.barcode===code;});
-  if(p){
-    closeScanner();
-    openATC(p);
-    toast('✓ '+p.name);
-  }else{
-    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa gán sản phẩm nào. Nhập thủ công bên dưới.';
-    document.getElementById('scan-manual').value=code;
-  }
-}
-
-// ==================== SWIPE TO CLOSE ====================
-function enableSwipeToClose(sheetEl, closeFn) {
-  var startY = 0, curY = 0;
-  var handle = sheetEl.querySelector('.drag') || sheetEl;
-  function onMove(e) {
-    curY = e.touches[0].clientY;
-    var d = Math.max(0, curY - startY);
-    sheetEl.style.transform = 'translateY(' + d + 'px)';
-    e.preventDefault();
-  }
-  function onEnd() {
-    document.removeEventListener('touchmove', onMove, {passive: false});
-    document.removeEventListener('touchend', onEnd);
-    sheetEl.style.overflowY = 'auto';
-    var d = curY - startY;
-    sheetEl.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
-    if (d > 80) {
-      sheetEl.style.transform = 'translateY(110%)';
-      setTimeout(function() { sheetEl.style.transform = ''; sheetEl.style.transition = ''; closeFn(); }, 260);
-    } else {
-      sheetEl.style.transform = 'translateY(0)';
-      setTimeout(function() { sheetEl.style.transition = ''; }, 300);
-    }
-  }
-  handle.addEventListener('touchstart', function(e) {
-    startY = e.touches[0].clientY; curY = startY;
-    sheetEl.style.transition = 'none'; sheetEl.style.overflowY = 'hidden';
-    document.addEventListener('touchmove', onMove, {passive: false});
-    document.addEventListener('touchend', onEnd);
-  }, {passive: true});
-}
-
-// ==================== SERVICE WORKER ====================
-if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  });
-}
-</script>
-</body>
-</html>

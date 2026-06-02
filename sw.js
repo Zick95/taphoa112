@@ -1,4 +1,4 @@
-const CACHE = 'tapho112-v4';
+const CACHE = 'tapho112-v5';
 const ASSETS = ['/taphoa112/', '/taphoa112/index.html'];
 
 self.addEventListener('install', e => {
