@@ -1567,20 +1567,133 @@ function importJSON(){
 }
 
 // ==================== BARCODE SCANNER ====================
-// iOS 17+  : BarcodeDetector live video (native, no CDN)
-// iOS < 17 : chụp ảnh qua camera → BarcodeDetector decode
-// Fallback  : nhập thủ công
-var _scanMode='sell', _scanning=false, _stream=null, _scanTimer=null;
+// Pure JS inline EAN-13/8 decoder — no CDN, no workers, works on all iOS/Android
+
+var _scanMode='sell', _scanning=false, _stream=null, _raf=null;
 var _lastCode='', _lastCodeTs=0;
 
+// ---- Inline EAN-13 / EAN-8 decoder ----
+var _BD=(function(){
+  // Run-width patterns for each digit [w,b,w,b] = 7 modules
+  var L=[[3,2,1,1],[2,2,2,1],[2,1,2,2],[1,4,1,1],[1,1,3,2],[1,2,3,1],[1,1,1,4],[1,3,1,2],[1,2,1,3],[3,1,1,2]];
+  var G=[[1,1,2,3],[1,2,2,2],[2,2,1,2],[1,1,4,1],[2,3,1,1],[1,3,2,1],[4,1,1,1],[2,1,3,1],[3,1,2,1],[2,1,1,3]];
+  // R has same widths as L but starts black — handled by color check in caller
+  var FD=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+
+  function thresh(row,w){
+    var h=Math.max(Math.floor(w/16),15),b=new Array(w);
+    for(var i=0;i<w;i++){
+      var lo=Math.max(0,i-h),hi=Math.min(w-1,i+h),mn=255,mx=0;
+      for(var j=lo;j<=hi;j++){if(row[j]<mn)mn=row[j];if(row[j]>mx)mx=row[j];}
+      b[i]=row[i]<(mn+mx)/2?1:0;
+    }
+    return b;
+  }
+  function gray(d,w){var g=new Array(w);for(var i=0;i<w;i++)g[i]=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;return g;}
+  function runs(b){
+    var r=[],c=b[0],l=1;
+    for(var i=1;i<b.length;i++){if(b[i]===c)l++;else{r.push([c,l]);c=b[i];l=1;}}
+    r.push([c,l]);return r;
+  }
+  function mD(r,i,P){
+    if(i+3>=r.length)return -1;
+    var a=r[i][1],b=r[i+1][1],c=r[i+2][1],d=r[i+3][1],t=a+b+c+d;
+    if(t<4)return -1;
+    for(var n=0;n<10;n++){
+      var p=P[n];
+      if(Math.abs(a*7/t-p[0])<=1.5&&Math.abs(b*7/t-p[1])<=1.5&&
+         Math.abs(c*7/t-p[2])<=1.5&&Math.abs(d*7/t-p[3])<=1.5)return n;
+    }
+    return -1;
+  }
+  function g3(r,i){
+    if(i+2>=r.length)return false;
+    var a=r[i][1],b=r[i+1][1],c=r[i+2][1];
+    return Math.max(a,b,c)/Math.min(a,b,c)<2.5;
+  }
+  function g5(r,i){
+    if(i+4>=r.length)return false;
+    if(r[i][0]!==0||r[i+1][0]!==1||r[i+2][0]!==0||r[i+3][0]!==1||r[i+4][0]!==0)return false;
+    var v=[r[i][1],r[i+1][1],r[i+2][1],r[i+3][1],r[i+4][1]];
+    return Math.max.apply(null,v)/Math.min.apply(null,v)<2.5;
+  }
+
+  function e13(r){
+    for(var si=0;si<r.length-58;si++){
+      if(r[si][0]!==1||!g3(r,si))continue;
+      var ri=si+3,digs=[],par=[],ok=true;
+      for(var i=0;i<6;i++){
+        if(ri+3>=r.length||r[ri][0]!==0){ok=false;break;}
+        var dl=mD(r,ri,L),dg=mD(r,ri,G);
+        if(dl>=0){digs.push(dl);par.push('L');}
+        else if(dg>=0){digs.push(dg);par.push('G');}
+        else{ok=false;break;}
+        ri+=4;
+      }
+      if(!ok||!g5(r,ri))continue;ri+=5;
+      for(var i=0;i<6;i++){
+        if(ri+3>=r.length||r[ri][0]!==1){ok=false;break;}
+        var dr=mD(r,ri,L);if(dr<0){ok=false;break;}
+        digs.push(dr);ri+=4;
+      }
+      if(!ok||ri+2>=r.length||r[ri][0]!==1||!g3(r,ri))continue;
+      var fd=FD.indexOf(par.join(''));if(fd<0)continue;
+      var all=[fd].concat(digs),sum=0;
+      for(var i=0;i<12;i++)sum+=all[i]*(i%2?3:1);
+      if((10-sum%10)%10!==all[12])continue;
+      return all.join('');
+    }
+    return null;
+  }
+
+  function e8(r){
+    for(var si=0;si<r.length-42;si++){
+      if(r[si][0]!==1||!g3(r,si))continue;
+      var ri=si+3,digs=[],ok=true;
+      for(var i=0;i<4;i++){
+        if(ri+3>=r.length||r[ri][0]!==0){ok=false;break;}
+        var d=mD(r,ri,L);if(d<0){ok=false;break;}digs.push(d);ri+=4;
+      }
+      if(!ok||!g5(r,ri))continue;ri+=5;
+      for(var i=0;i<4;i++){
+        if(ri+3>=r.length||r[ri][0]!==1){ok=false;break;}
+        var d=mD(r,ri,L);if(d<0){ok=false;break;}digs.push(d);ri+=4;
+      }
+      if(!ok||ri+2>=r.length||r[ri][0]!==1||!g3(r,ri))continue;
+      var sum=0,wt=[3,1,3,1,3,1,3];
+      for(var i=0;i<7;i++)sum+=digs[i]*wt[i];
+      if((10-sum%10)%10!==digs[7])continue;
+      return digs.join('');
+    }
+    return null;
+  }
+
+  function decode(canvas){
+    var w=canvas.width,h=canvas.height;
+    if(w<100)return null;
+    var ctx=canvas.getContext('2d');
+    for(var yp=30;yp<=70;yp+=5){
+      var y=Math.floor(h*yp/100);
+      var d=ctx.getImageData(0,y,w,1).data;
+      var b=thresh(gray(d,w),w);
+      var r=runs(b);
+      var code=e13(r)||e8(r);
+      if(code)return code;
+    }
+    return null;
+  }
+  return{decode:decode};
+})();
+
+// ---- Scanner UI & Camera ----
 function openScanner(mode){
   _scanMode=mode||'sell';
   document.getElementById('scanModal').classList.add('on');
   document.getElementById('scan-status').textContent='Đang khởi động...';
   document.getElementById('scan-manual').value='';
-  setTimeout(_startScanner, 300);
+  setTimeout(_startScanner,300);
 }
-function openScannerForProduct(){ openScanner('product'); }
+function openScannerForProduct(){openScanner('product');}
 
 function closeScanner(){
   _stopScanner();
@@ -1588,110 +1701,93 @@ function closeScanner(){
 }
 
 function _onCode(code){
-  if(!code||!_scanning) return;
+  if(!code||!_scanning)return;
   var now=Date.now();
-  if(code===_lastCode&&now-_lastCodeTs<2000) return;
-  _lastCode=code; _lastCodeTs=now;
-  if(navigator.vibrate) navigator.vibrate(80);
+  if(code===_lastCode&&now-_lastCodeTs<2000)return;
+  _lastCode=code;_lastCodeTs=now;
+  if(navigator.vibrate)navigator.vibrate(80);
   onBarcodeFound(code);
 }
 
 function _startScanner(){
-  _stopScanner();
-  _scanning=true;
-  if('BarcodeDetector' in window){
-    // iOS 17+ / Chrome: live video scanning
+  _stopScanner();_scanning=true;
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
     _startLiveScanner();
-  } else {
-    // iOS < 17: chụp ảnh bằng camera native
+  }else{
     _startPhotoScanner();
   }
 }
 
-// --- Live BarcodeDetector (iOS 17+, Chrome) ---
 function _startLiveScanner(){
-  var readerEl=document.getElementById('reader');
-  readerEl.innerHTML='';
+  var el=document.getElementById('reader');
+  el.innerHTML='';
   navigator.mediaDevices.getUserMedia({
     video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
   }).then(function(stream){
     _stream=stream;
     var v=document.createElement('video');
-    v.srcObject=stream;
-    v.setAttribute('playsinline','');
-    v.muted=true;
+    v.srcObject=stream;v.setAttribute('playsinline','');v.muted=true;
     v.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
-    readerEl.appendChild(v);
-    return v.play().then(function(){return v;});
-  }).then(function(v){
+    var c=document.createElement('canvas');c.style.display='none';
+    el.appendChild(v);el.appendChild(c);
+    return v.play().then(function(){return{v:v,c:c};});
+  }).then(function(vc){
     document.getElementById('scan-status').textContent='📷 Hướng camera vào mã vạch';
-    var det=new BarcodeDetector({
-      formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']
-    });
+    var v=vc.v,c=vc.c;
     function loop(){
-      if(!_scanning) return;
-      det.detect(v).then(function(codes){
-        if(codes.length) _onCode(codes[0].rawValue);
-      }).catch(function(){}).finally(function(){
-        if(_scanning) _scanTimer=setTimeout(loop,200);
-      });
+      if(!_scanning)return;
+      if(v.readyState>=2){
+        c.width=Math.min(v.videoWidth,640);
+        c.height=Math.min(v.videoHeight,480);
+        c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+        var code=_BD.decode(c);
+        if(code)_onCode(code);
+      }
+      _raf=setTimeout(loop,200);
     }
     loop();
-  }).catch(function(err){
-    document.getElementById('scan-status').textContent='⚠️ Không mở được camera: '+(err.message||err)+'. Nhập thủ công bên dưới.';
+  }).catch(function(){
+    _startPhotoScanner();
   });
 }
 
-// --- Photo capture (iOS < 17) ---
 function _startPhotoScanner(){
-  var readerEl=document.getElementById('reader');
-  readerEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:#fff">'
+  document.getElementById('reader').innerHTML=
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:#fff">'
     +'<div style="font-size:48px">📸</div>'
-    +'<div style="font-size:14px;font-weight:600">Chụp ảnh mã vạch</div>'
-    +'<button onclick="_triggerPhotoCapture()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:15px;font-weight:700">📷 Mở camera</button>'
-    +'<div style="font-size:12px;opacity:.6;text-align:center;padding:0 20px">Hướng camera vào mã vạch rồi chụp ảnh</div>'
+    +'<div style="font-size:15px;font-weight:700">Chụp ảnh mã vạch</div>'
+    +'<button onclick="_triggerPhotoCapture()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;min-height:48px">📷 Mở camera</button>'
+    +'<div style="font-size:12px;opacity:.6;text-align:center;padding:0 24px">Chụp gần, đủ sáng, barcode nằm ngang</div>'
     +'</div>';
-  document.getElementById('scan-status').textContent='Thiết bị dùng chế độ chụp ảnh';
+  document.getElementById('scan-status').textContent='Chế độ chụp ảnh';
 }
 
 function _triggerPhotoCapture(){
   var input=document.getElementById('barcode-capture');
   input.onchange=function(e){
-    var file=e.target.files[0];
-    input.value='';
-    if(!file) return;
-    document.getElementById('scan-status').textContent='⏳ Đang nhận diện mã vạch...';
-    createImageBitmap(file).then(function(bitmap){
-      if('BarcodeDetector' in window){
-        var det=new BarcodeDetector({
-          formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']
-        });
-        return det.detect(bitmap);
-      }
-      // Fallback: vẽ lên canvas rồi thử
-      var canvas=document.createElement('canvas');
-      canvas.width=bitmap.width; canvas.height=bitmap.height;
-      canvas.getContext('2d').drawImage(bitmap,0,0);
-      return Promise.resolve([]);
-    }).then(function(codes){
-      if(codes&&codes.length){
-        _onCode(codes[0].rawValue);
-      } else {
-        document.getElementById('scan-status').textContent='⚠️ Không nhận ra mã vạch. Chụp lại hoặc nhập thủ công.';
-      }
-    }).catch(function(err){
-      document.getElementById('scan-status').textContent='⚠️ Lỗi: '+(err.message||err);
-    });
+    var file=e.target.files[0];input.value='';
+    if(!file)return;
+    document.getElementById('scan-status').textContent='⏳ Đang nhận diện...';
+    var img=new Image(),url=URL.createObjectURL(file);
+    img.onload=function(){
+      var c=document.createElement('canvas');
+      c.width=img.width;c.height=img.height;
+      c.getContext('2d').drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      var code=_BD.decode(c);
+      if(code){_onCode(code);}
+      else{document.getElementById('scan-status').textContent='⚠️ Không nhận ra. Chụp lại (gần hơn, đủ sáng, barcode nằm ngang).';}
+    };
+    img.src=url;
   };
   input.click();
 }
 
 function _stopScanner(){
   _scanning=false;
-  if(_scanTimer){clearTimeout(_scanTimer);_scanTimer=null;}
+  if(_raf){clearTimeout(_raf);_raf=null;}
   if(_stream){_stream.getTracks().forEach(function(t){t.stop();});_stream=null;}
-  var readerEl=document.getElementById('reader');
-  if(readerEl) readerEl.innerHTML='';
+  var el=document.getElementById('reader');if(el)el.innerHTML='';
 }
 
 function onBarcodeFound(code){

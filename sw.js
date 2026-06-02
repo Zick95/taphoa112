@@ -1,23 +1,18 @@
-const CACHE = 'tapho112-v6';
-const ASSETS = ['/taphoa112/', '/taphoa112/index.html'];
+const CACHE = 'tapho112-v8';
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-  );
-});
+// Không pre-cache trong install — tránh lỗi path sai làm SW mới không activate được
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', e => {
+  // Xóa toàn bộ cache cũ
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-// Network-first: luôn lấy bản mới từ server, cache chỉ dùng khi offline
+// Network-first: luôn lấy từ server, cache chỉ dùng khi offline
 self.addEventListener('fetch', e => {
   e.respondWith(
     fetch(e.request)
@@ -26,8 +21,4 @@ self.addEventListener('fetch', e => {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
-        return res;
-      })
-      .catch(() => caches.match(e.request))
-  );
-});
+   
