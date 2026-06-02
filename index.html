@@ -1561,45 +1561,81 @@ function importJSON(){
 }
 
 // ==================== BARCODE SCANNER ====================
-var _scanner=null, _scanMode='sell'; // sell | product
+var _scanner=null, _scanMode='sell';
+var _isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
 function openScanner(mode){
   _scanMode=mode||'sell';
   document.getElementById('scanModal').classList.add('on');
-  document.getElementById('scan-status').textContent='Hướng camera vào mã vạch sản phẩm';
   document.getElementById('scan-manual').value='';
-  _startScanner();
+  if(_isIOS){
+    _showIOSScanUI();
+  } else {
+    document.getElementById('scan-status').textContent='Hướng camera vào mã vạch sản phẩm';
+    _startScanner();
+  }
 }
-function openScannerForProduct(){
-  openScanner('product');
-}
+function openScannerForProduct(){ openScanner('product'); }
+
 function closeScanner(){
   _stopScanner();
   document.getElementById('scanModal').classList.remove('on');
+  document.getElementById('reader').innerHTML='';
 }
+
+// iOS: dùng chụp ảnh rồi decode (đáng tin cậy hơn real-time trên Safari)
+function _showIOSScanUI(){
+  document.getElementById('scan-status').textContent='Chụp ảnh rõ nét mã vạch để nhận mã';
+  document.getElementById('reader').innerHTML=
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:24px">'
+    +'<div style="font-size:72px">📷</div>'
+    +'<div style="color:#fff;font-size:14px;text-align:center;line-height:1.6;opacity:.8">Bấm nút bên dưới để mở camera<br>Chụp ảnh thẳng vào mã vạch</div>'
+    +'<button id="ios-photo-btn" style="background:#2563eb;color:#fff;border:none;border-radius:14px;padding:16px 36px;font-size:17px;font-weight:700;touch-action:manipulation;width:100%;max-width:260px">📸 Chụp ảnh mã vạch</button>'
+    +'</div>';
+  // Gắn listener sau khi DOM render
+  setTimeout(function(){
+    var btn=document.getElementById('ios-photo-btn');
+    if(!btn) return;
+    function doCapture(e){ e.preventDefault(); _captureAndDecode(); }
+    btn.addEventListener('touchend', doCapture);
+    btn.addEventListener('click', doCapture);
+  }, 100);
+}
+
+function _captureAndDecode(){
+  document.getElementById('scan-status').textContent='Đang mở camera...';
+  var input=document.createElement('input');
+  input.type='file'; input.accept='image/*'; input.capture='environment';
+  input.style.cssText='position:fixed;top:-9999px;opacity:0';
+  document.body.appendChild(input);
+  input.addEventListener('change',function(){
+    var file=input.files&&input.files[0];
+    document.body.removeChild(input);
+    if(!file){ _showIOSScanUI(); return; }
+    document.getElementById('scan-status').textContent='⏳ Đang nhận mã vạch...';
+    Html5Qrcode.scanFile(file,false).then(function(code){
+      onBarcodeFound(code);
+    }).catch(function(){
+      document.getElementById('scan-status').textContent='⚠️ Không đọc được mã. Thử chụp lại hoặc nhập thủ công bên dưới.';
+      _showIOSScanUI();
+    });
+  });
+  // Nếu user cancel picker
+  setTimeout(function(){
+    if(document.body.contains(input)){
+      document.body.removeChild(input);
+      _showIOSScanUI();
+    }
+  }, 30000);
+  input.click();
+}
+
+// Non-iOS: live streaming
 function _startScanner(){
   _stopScanner();
   try{
-    // Hỗ trợ cả barcode 1D (EAN-13, Code128...) và QR code
-    var formats=[
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.QR_CODE
-    ];
-    _scanner=new Html5Qrcode('reader',{formatsToSupport:formats,verbose:false});
-    // Khung quét nằm ngang, phù hợp barcode 1D trên hàng hóa
-    var cfg={
-      fps:15,
-      qrbox:function(w,h){
-        return{width:Math.round(w*0.88),height:Math.round(h*0.28)};
-      },
-      aspectRatio:1.7778 // 16:9
-    };
+    _scanner=new Html5Qrcode('reader',{verbose:false});
+    var cfg={fps:15,qrbox:function(w,h){return{width:Math.round(w*0.85),height:Math.round(h*0.35)};}};
     _scanner.start({facingMode:'environment'},cfg,function(code){
       onBarcodeFound(code);
     },function(){}).catch(function(e){
@@ -1610,31 +1646,29 @@ function _startScanner(){
   }
 }
 function _stopScanner(){
-  if(_scanner){
-    _scanner.stop().catch(function(){});
-    _scanner=null;
-  }
+  if(_scanner){ _scanner.stop().catch(function(){}); _scanner=null; }
 }
+
 function onBarcodeFound(code){
-  if(!code) return;
+  if(!code||!code.trim()) return;
+  code=code.trim();
   if(_scanMode==='product'){
-    // Điền mã vạch vào form sản phẩm
     closeScanner();
     document.getElementById('pm-barcode').value=code;
-    toast('✓ Đã quét: '+code);
+    toast('✓ Mã vạch: '+code);
     return;
   }
-  // Chế độ bán hàng — tìm sản phẩm
-  var p=products.find(function(x){return x.barcode===code;});
+  // Chế độ bán hàng
+  var p=products.find(function(x){return x.barcode&&x.barcode===code;});
   if(p){
     closeScanner();
-    toast('✓ Tìm thấy: '+p.name);
     openATC(p);
+    toast('✓ '+p.name);
   }else{
-    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa có sản phẩm. Vui lòng thêm mã vào sản phẩm.';
-    // Dừng quét để tránh spam
-    if(_scanner) _scanner.pause();
-    setTimeout(function(){if(_scanner) _scanner.resume();},3000);
+    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa được gán cho sản phẩm nào.';
+    document.getElementById('scan-manual').value=code;
+    if(!_isIOS) _showIOSScanUI(); // reset iOS UI
+    if(_scanner){ _scanner.pause(); setTimeout(function(){if(_scanner)_scanner.resume();},3000); }
   }
 }
 
