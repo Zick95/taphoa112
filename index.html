@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 
 <!-- ZXing: fallback barcode scanner cho iOS < 17 -->
-<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.14.3/umd/index.min.js"></script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1652,28 +1652,32 @@ function _startZXingScanner(){
   video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
   readerEl.appendChild(video);
 
-  var hints = new Map();
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  _zxingReader = new ZXing.BrowserMultiFormatReader(hints, 500);
+  try {
+    var hints = new Map();
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    _zxingReader = new ZXing.BrowserMultiFormatReader(hints);
 
-  _zxingReader.decodeFromConstraints(
-    { video:{ facingMode:'environment' } },
-    video,
-    function(result, err){
-      if(!result || !_scanning) return;
-      var code = result.getText();
-      var now = Date.now();
-      if(code !== _lastCode || now - _lastCodeTs > 2000){
-        _lastCode = code; _lastCodeTs = now;
-        if(navigator.vibrate) navigator.vibrate(80);
-        onBarcodeFound(code);
+    _zxingReader.decodeFromConstraints(
+      { video:{ facingMode:'environment' } },
+      video,
+      function(result, err){
+        if(!result || !_scanning) return;
+        var code = result.getText();
+        var now = Date.now();
+        if(code !== _lastCode || now - _lastCodeTs > 2000){
+          _lastCode = code; _lastCodeTs = now;
+          if(navigator.vibrate) navigator.vibrate(80);
+          onBarcodeFound(code);
+        }
       }
-    }
-  ).catch(function(err){
-    document.getElementById('scan-status').textContent = '⚠️ Lỗi camera: '+(err&&err.message||err);
-  });
+    ).catch(function(err){
+      document.getElementById('scan-status').textContent = '⚠️ Lỗi camera: '+(err&&err.message||err);
+    });
 
-  document.getElementById('scan-status').textContent = '📷 Hướng camera vào mã vạch';
+    document.getElementById('scan-status').textContent = '📷 Hướng camera vào mã vạch';
+  } catch(e) {
+    document.getElementById('scan-status').textContent = '⚠️ Không hỗ trợ quét tự động. Nhập mã thủ công bên dưới.';
+  }
 }
 
 function _stopScanner(){
