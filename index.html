@@ -1679,13 +1679,18 @@ var _BD=(function(){
     var w=canvas.width,h=canvas.height;
     if(w<100)return null;
     var ctx=canvas.getContext('2d');
-    for(var yp=30;yp<=70;yp+=5){
+    // Quét 10 dòng ngang, yêu cầu >=2 dòng cho ra cùng mã mới chấp nhận
+    var counts={};
+    for(var yp=20;yp<=80;yp+=6){
       var y=Math.floor(h*yp/100);
       var d=ctx.getImageData(0,y,w,1).data;
       var b=thresh(gray(d,w),w);
       var r=runs(b);
       var code=e13(r)||e8(r);
-      if(code)return code;
+      if(code){
+        counts[code]=(counts[code]||0)+1;
+        if(counts[code]>=2)return code; // >=2 dòng đồng thuận → chắc chắn
+      }
     }
     return null;
   }
