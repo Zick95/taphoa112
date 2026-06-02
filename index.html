@@ -107,7 +107,8 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
   padding:11px 16px;border-radius:8px;font-size:14px;font-weight:600;
-  border:none;cursor:pointer;-webkit-appearance:none;min-height:44px}
+  border:none;cursor:pointer;-webkit-appearance:none;min-height:44px;
+  touch-action:manipulation}
 .btn:active{opacity:.8;transform:scale(.97)}
 .bp{background:var(--p);color:#fff}
 .bg{background:var(--g);color:#fff}
@@ -584,7 +585,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <div class="fg"><div class="lbl">Mã vạch (barcode)</div>
       <div style="display:flex;gap:6px">
         <input type="text" id="pm-barcode" placeholder="Quét hoặc nhập mã vạch..." inputmode="numeric" style="flex:1">
-        <button type="button" id="pm-barcode-scan" class="btn bo bsm" style="flex-shrink:0;padding:0 10px">
+        <button type="button" id="pm-barcode-scan" class="btn bo bsm" style="flex-shrink:0;padding:0 10px;touch-action:manipulation">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="17" y1="12" x2="17" y2="12.01"/><line x1="7" y1="9" x2="7" y2="15"/></svg>
         </button>
       </div>
@@ -1159,7 +1160,11 @@ document.getElementById('pm-img-input').addEventListener('change',function(){
 document.getElementById('pm-img-remove').addEventListener('click',function(e){
   e.stopPropagation(); document.getElementById('pm-img-input').value=''; setImgPreview(null);
 });
-document.getElementById('pm-barcode-scan').addEventListener('click',function(e){
+var _bcScanBtn=document.getElementById('pm-barcode-scan');
+_bcScanBtn.addEventListener('touchend',function(e){
+  e.preventDefault(); e.stopPropagation(); openScannerForProduct();
+});
+_bcScanBtn.addEventListener('click',function(e){
   e.stopPropagation(); openScannerForProduct();
 });
 
