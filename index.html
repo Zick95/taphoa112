@@ -14,6 +14,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAADkDFNAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4B//79AAAAJklEQVR42mL4z8BQDwAEgAF/QualIQAAAABJRU5ErkJggg==">
 <link rel="manifest" href="manifest.json">
 
+<!-- Barcode Scanner -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -115,9 +117,27 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 
 /* SEARCH */
 .sr{position:relative;margin-bottom:10px}
-.sr input{padding-left:38px}
+.sr input{padding-left:38px;padding-right:44px}
 .sr-ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);
   color:var(--mu);width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.scan-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  background:var(--p);border:none;border-radius:6px;padding:5px 7px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.scan-btn svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
+
+/* SCANNER MODAL */
+#scanModal{position:fixed;inset:0;background:#000;z-index:500;display:none;flex-direction:column}
+#scanModal.on{display:flex}
+#scanModal-header{padding:calc(var(--sat) + 12px) 16px 12px;display:flex;align-items:center;gap:12px;background:#000;color:#fff;flex-shrink:0}
+#scanModal-header h2{font-size:16px;font-weight:700;flex:1}
+#scan-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
+#reader{flex:1;width:100%;overflow:hidden}
+#scanModal-footer{padding:16px;padding-bottom:calc(16px + var(--sab));background:#000;color:#fff;text-align:center;flex-shrink:0}
+#scan-status{font-size:13px;opacity:.7;margin-bottom:8px}
+#scan-manual-wrap{display:flex;gap:8px}
+#scan-manual{flex:1;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:10px 12px;font-size:14px;color:#fff;background:rgba(255,255,255,.1);outline:none}
+#scan-manual::placeholder{color:rgba(255,255,255,.4)}
+#scan-manual-btn{background:var(--p);border:none;color:#fff;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600}
 
 /* PRODUCT LIST */
 .pgrid{display:flex;flex-direction:column;gap:7px}
@@ -367,9 +387,28 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
   <div class="alert" id="lowAlert" style="display:none">⚠️ <span id="lowTxt"></span></div>
   <div class="sr">
     <svg class="sr-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input id="sellSearch" type="text" placeholder="Tìm tên sản phẩm..." autocomplete="off">
+    <input id="sellSearch" type="text" placeholder="Tìm tên hoặc mã vạch..." autocomplete="off">
+    <button class="scan-btn" onclick="openScanner()" title="Quét mã vạch">
+      <svg viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="17" y1="12" x2="17" y2="12.01"/><line x1="7" y1="9" x2="7" y2="15"/></svg>
+    </button>
   </div>
   <div class="pgrid" id="pgrid"></div>
+</div>
+
+<!-- SCANNER MODAL -->
+<div id="scanModal">
+  <div id="scanModal-header">
+    <h2>📷 Quét mã vạch</h2>
+    <button id="scan-close" onclick="closeScanner()">✕ Đóng</button>
+  </div>
+  <div id="reader"></div>
+  <div id="scanModal-footer">
+    <div id="scan-status">Hướng camera vào mã vạch sản phẩm</div>
+    <div id="scan-manual-wrap">
+      <input id="scan-manual" type="text" placeholder="Hoặc nhập mã vạch thủ công..." inputmode="numeric">
+      <button id="scan-manual-btn" onclick="onBarcodeFound(document.getElementById('scan-manual').value.trim())">Tìm</button>
+    </div>
+  </div>
 </div>
 
 <!-- SẢN PHẨM -->
@@ -542,6 +581,14 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
       </div>
     </div>
     <div class="fg"><div class="lbl">Tên sản phẩm *</div><input type="text" id="pm-name" placeholder="VD: Nước ngọt Pepsi 330ml"></div>
+    <div class="fg"><div class="lbl">Mã vạch (barcode)</div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="pm-barcode" placeholder="Quét hoặc nhập mã vạch..." inputmode="numeric" style="flex:1">
+        <button type="button" class="btn bo bsm" onclick="openScannerForProduct()" style="flex-shrink:0;padding:0 10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="17" y1="12" x2="17" y2="12.01"/><line x1="7" y1="9" x2="7" y2="15"/></svg>
+        </button>
+      </div>
+    </div>
     <div class="fg"><div class="lbl">Danh mục</div><input type="text" id="pm-cat" placeholder="Đồ uống, Bánh kẹo..."></div>
     <div class="fr">
       <div class="fg"><div class="lbl">Đơn vị nhỏ *</div><input type="text" id="pm-bu" placeholder="chai, cái, kg..."></div>
@@ -1118,11 +1165,12 @@ function openProdModal(id){
   document.getElementById('pm-id').value=id||'';
   document.getElementById('prod-modal-title').textContent=id?'Sửa sản phẩm':'Thêm sản phẩm';
   document.getElementById('pm-img-input').value='';
-  ['pm-name','pm-cat','pm-bu','pm-sp','pm-bp','pm-low','pm-stock','pm-big','pm-ratio','pm-bigp'].forEach(function(f){document.getElementById(f).value='';});
+  ['pm-name','pm-barcode','pm-cat','pm-bu','pm-sp','pm-bp','pm-low','pm-stock','pm-big','pm-ratio','pm-bigp'].forEach(function(f){document.getElementById(f).value='';});
   if(id){
     var p=products.find(function(x){return x.id===id;});
     setImgPreview(p.image||null);
     document.getElementById('pm-name').value=p.name;
+    document.getElementById('pm-barcode').value=p.barcode||'';
     document.getElementById('pm-cat').value=p.category||'';
     document.getElementById('pm-bu').value=p.baseUnit||'cái';
     document.getElementById('pm-sp').value=p.sellPrice;
@@ -1147,7 +1195,7 @@ function saveProd(){
     if(!bigUnit||bigRatio<2){toast('Nhập tên + quy đổi đvt lớn (≥2)!');return;}
   }
   var id=document.getElementById('pm-id').value;
-  var data={name:name,category:document.getElementById('pm-cat').value.trim(),baseUnit:document.getElementById('pm-bu').value.trim()||'cái',sellPrice:sp,buyPrice:parseFloat(document.getElementById('pm-bp').value)||0,stock:parseFloat(document.getElementById('pm-stock').value)||0,lowStock:parseFloat(document.getElementById('pm-low').value)||5,bigUnit:bigUnit,bigRatio:bigRatio,bigPrice:bigPrice,allowDecimal:decOn,image:currentImage};
+  var data={name:name,barcode:document.getElementById('pm-barcode').value.trim()||null,category:document.getElementById('pm-cat').value.trim(),baseUnit:document.getElementById('pm-bu').value.trim()||'cái',sellPrice:sp,buyPrice:parseFloat(document.getElementById('pm-bp').value)||0,stock:parseFloat(document.getElementById('pm-stock').value)||0,lowStock:parseFloat(document.getElementById('pm-low').value)||5,bigUnit:bigUnit,bigRatio:bigRatio,bigPrice:bigPrice,allowDecimal:decOn,image:currentImage};
   if(id){ var i=products.findIndex(function(x){return x.id===id;}); products[i]=Object.assign({},products[i],data); toast('✓ Đã cập nhật'); }
   else{ products.push(Object.assign({id:gid()},data)); toast('✓ Đã thêm sản phẩm'); }
   save(); closeOvl('ovl-prod'); renderProdList();
@@ -1496,6 +1544,66 @@ function importJSON(){
     }catch(err){toast('Lỗi đọc file!');}
   };
   r.readAsText(f);
+}
+
+// ==================== BARCODE SCANNER ====================
+var _scanner=null, _scanMode='sell'; // sell | product
+
+function openScanner(mode){
+  _scanMode=mode||'sell';
+  document.getElementById('scanModal').classList.add('on');
+  document.getElementById('scan-status').textContent='Hướng camera vào mã vạch sản phẩm';
+  document.getElementById('scan-manual').value='';
+  _startScanner();
+}
+function openScannerForProduct(){
+  openScanner('product');
+}
+function closeScanner(){
+  _stopScanner();
+  document.getElementById('scanModal').classList.remove('on');
+}
+function _startScanner(){
+  _stopScanner();
+  try{
+    _scanner=new Html5Qrcode('reader');
+    var cfg={fps:10,qrbox:function(w,h){var s=Math.min(w,h)*0.7;return{width:s,height:Math.round(s*0.5)};}};
+    _scanner.start({facingMode:'environment'},cfg,function(code){
+      onBarcodeFound(code);
+    },function(){}).catch(function(e){
+      document.getElementById('scan-status').textContent='⚠️ Không thể mở camera: '+e;
+    });
+  }catch(e){
+    document.getElementById('scan-status').textContent='⚠️ Trình duyệt không hỗ trợ scanner';
+  }
+}
+function _stopScanner(){
+  if(_scanner){
+    _scanner.stop().catch(function(){});
+    _scanner=null;
+  }
+}
+function onBarcodeFound(code){
+  if(!code) return;
+  if(_scanMode==='product'){
+    // Điền mã vạch vào form sản phẩm
+    closeScanner();
+    document.getElementById('pm-barcode').value=code;
+    toast('✓ Đã quét: '+code);
+    return;
+  }
+  // Chế độ bán hàng — tìm sản phẩm
+  var p=products.find(function(x){return x.barcode===code;});
+  if(p){
+    closeScanner();
+    toast('✓ Tìm thấy: '+p.name);
+    openATC(p);
+  }else{
+    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa có sản phẩm. Vui lòng thêm mã vào sản phẩm.';
+    // Dừng quét để tránh spam
+    if(_scanner) _scanner.pause();
+    setTimeout(function(){if(_scanner) _scanner.resume();},3000);
+  }
 }
 
 // ==================== SWIPE TO CLOSE ====================
