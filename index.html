@@ -1682,3 +1682,66 @@ function _stopScanner(){
   var readerEl=document.getElementById('reader');
   if(readerEl) readerEl.innerHTML='';
 }
+
+function onBarcodeFound(code){
+  if(!code||!code.trim()) return;
+  code=code.trim();
+  if(_scanMode==='product'){
+    closeScanner();
+    document.getElementById('pm-barcode').value=code;
+    toast('✓ Mã vạch: '+code);
+    return;
+  }
+  // Bán hàng — tìm sản phẩm theo barcode
+  var p=products.find(function(x){return x.barcode&&x.barcode===code;});
+  if(p){
+    closeScanner();
+    openATC(p);
+    toast('✓ '+p.name);
+  }else{
+    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa gán sản phẩm nào. Nhập thủ công bên dưới.';
+    document.getElementById('scan-manual').value=code;
+  }
+}
+
+// ==================== SWIPE TO CLOSE ====================
+function enableSwipeToClose(sheetEl, closeFn) {
+  var startY = 0, curY = 0;
+  var handle = sheetEl.querySelector('.drag') || sheetEl;
+  function onMove(e) {
+    curY = e.touches[0].clientY;
+    var d = Math.max(0, curY - startY);
+    sheetEl.style.transform = 'translateY(' + d + 'px)';
+    e.preventDefault();
+  }
+  function onEnd() {
+    document.removeEventListener('touchmove', onMove, {passive: false});
+    document.removeEventListener('touchend', onEnd);
+    sheetEl.style.overflowY = 'auto';
+    var d = curY - startY;
+    sheetEl.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+    if (d > 80) {
+      sheetEl.style.transform = 'translateY(110%)';
+      setTimeout(function() { sheetEl.style.transform = ''; sheetEl.style.transition = ''; closeFn(); }, 260);
+    } else {
+      sheetEl.style.transform = 'translateY(0)';
+      setTimeout(function() { sheetEl.style.transition = ''; }, 300);
+    }
+  }
+  handle.addEventListener('touchstart', function(e) {
+    startY = e.touches[0].clientY; curY = startY;
+    sheetEl.style.transition = 'none'; sheetEl.style.overflowY = 'hidden';
+    document.addEventListener('touchmove', onMove, {passive: false});
+    document.addEventListener('touchend', onEnd);
+  }, {passive: true});
+}
+
+// ==================== SERVICE WORKER ====================
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
