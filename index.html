@@ -125,24 +125,19 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 .scan-btn svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
 
 /* SCANNER MODAL */
-#scanModal{position:fixed;inset:0;background:#000;z-index:500;display:none;flex-direction:column}
+#scanModal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:flex-end}
 #scanModal.on{display:flex}
-#scanModal-header{padding:calc(var(--sat) + 12px) 16px 12px;display:flex;align-items:center;gap:12px;background:#000;color:#fff;flex-shrink:0}
-#scanModal-header h2{font-size:16px;font-weight:700;flex:1}
-#scan-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
-#reader{flex:1;width:100%;overflow:hidden}
-#scanModal-footer{padding:16px;padding-bottom:calc(16px + var(--sab));background:#000;color:#fff;text-align:center;flex-shrink:0}
-#scan-overlay{position:fixed;inset:0;pointer-events:none;z-index:501}
-#scan-line{position:absolute;left:10%;right:10%;height:2px;background:rgba(37,99,235,.8);
-  box-shadow:0 0 8px rgba(37,99,235,.9);animation:scanline 2s linear infinite}
-@keyframes scanline{0%{top:20%}50%{top:75%}100%{top:20%}}
-#reader video{width:100%!important;height:100%!important;object-fit:cover}
-#reader canvas{display:none!important;width:0!important;height:0!important}
-#scan-status{font-size:13px;opacity:.7;margin-bottom:8px}
+#scanModal-header{padding:16px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--br)}
+#scanModal-header h2{font-size:16px;font-weight:700;flex:1;color:var(--tx)}
+#scan-close{background:var(--bg);border:none;color:var(--mu);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
+#scanModal-body{padding:20px 16px;padding-bottom:calc(20px + var(--sab))}
+#scan-hint{font-size:13px;color:var(--mu);margin-bottom:16px;text-align:center;line-height:1.5}
+#scan-status{font-size:13px;color:var(--d);margin-top:10px;min-height:18px;text-align:center}
 #scan-manual-wrap{display:flex;gap:8px}
-#scan-manual{flex:1;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:10px 12px;font-size:14px;color:#fff;background:rgba(255,255,255,.1);outline:none}
-#scan-manual::placeholder{color:rgba(255,255,255,.4)}
-#scan-manual-btn{background:var(--p);border:none;color:#fff;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600}
+#scan-manual{flex:1;border:2px solid var(--p);border-radius:10px;padding:12px 14px;font-size:16px;color:var(--tx);background:#fff;outline:none}
+#scan-manual::placeholder{color:var(--mu)}
+#scan-manual-btn{background:var(--p);border:none;color:#fff;border-radius:10px;padding:12px 18px;font-size:14px;font-weight:700}
+#scanModal>div:last-child{background:#fff;border-radius:20px 20px 0 0;width:100%;box-shadow:0 -4px 20px rgba(0,0,0,.15)}
 
 /* PRODUCT LIST */
 .pgrid{display:flex;flex-direction:column;gap:7px}
@@ -393,30 +388,28 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
   <div class="sr">
     <svg class="sr-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input id="sellSearch" type="text" placeholder="Tìm tên hoặc mã vạch..." autocomplete="off">
-    <button class="scan-btn" onclick="openScanner()" title="Quét mã vạch">
-      <svg viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="17" y1="12" x2="17" y2="12.01"/><line x1="7" y1="9" x2="7" y2="15"/></svg>
+    <button class="scan-btn" onclick="openScanner()" title="Nhập mã vạch">
+      <svg viewBox="0 0 24 24"><rect x="2" y="4" width="3" height="16" rx="1"/><rect x="7" y="4" width="1" height="16" rx="0.5"/><rect x="10" y="4" width="2" height="16" rx="1"/><rect x="14" y="4" width="1" height="16" rx="0.5"/><rect x="17" y="4" width="3" height="16" rx="1"/><rect x="22" y="4" width="1" height="16" rx="0.5"/></svg>
     </button>
   </div>
   <div class="pgrid" id="pgrid"></div>
 </div>
 
-<!-- SCANNER MODAL -->
+<!-- MODAL: NHẬP MÃ VẠCh THỦ CÔNG -->
 <div id="scanModal">
   <div id="scanModal-header">
-    <h2>📷 Quét mã vạch</h2>
+    <h2>🔍 Nhập mã vạch</h2>
     <button id="scan-close" onclick="closeScanner()">✕ Đóng</button>
   </div>
-  <div id="reader" style="position:relative"></div>
-  <div id="scan-overlay"><div id="scan-line"></div></div>
-  <div id="scanModal-footer">
-    <div id="scan-status">Hướng camera vào mã vạch sản phẩm</div>
+  <div id="scanModal-body">
+    <div id="scan-hint">Dùng máy quét Bluetooth hoặc nhập mã vạch thủ công</div>
     <div id="scan-manual-wrap">
-      <input id="scan-manual" type="text" placeholder="Hoặc nhập mã vạch thủ công..." inputmode="numeric">
+      <input id="scan-manual" type="text" placeholder="Nhập hoặc quét mã vạch..." inputmode="numeric" autofocus>
       <button id="scan-manual-btn">Tìm</button>
     </div>
+    <div id="scan-status"></div>
   </div>
 </div>
-<input type="file" id="barcode-capture" accept="image/*" capture="environment" style="display:none">
 
 <!-- SẢN PHẨM -->
 <div class="pg" id="pg-products">
@@ -941,8 +934,13 @@ function checkLow(){
 
 // ==================== SELL ====================
 function renderSell(){
-  var q=(document.getElementById('sellSearch').value||'').toLowerCase();
-  var list=q?products.filter(function(p){return p.name.toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q);}):products;
+  var q=(document.getElementById('sellSearch').value||'').trim();
+  var ql=q.toLowerCase();
+  var list=q?products.filter(function(p){
+    return p.name.toLowerCase().includes(ql)
+      ||(p.category||'').toLowerCase().includes(ql)
+      ||(p.barcode&&p.barcode===q);
+  }):products;
   var el=document.getElementById('pgrid');
   if(!list.length){ el.innerHTML='<div class="empty">'+(q?'Không tìm thấy':'Chưa có sản phẩm. Thêm ở tab Sản phẩm!')+'</div>'; return; }
   el.innerHTML=list.map(function(p){
@@ -961,6 +959,19 @@ function renderSell(){
   });
 }
 document.getElementById('sellSearch').addEventListener('input',renderSell);
+document.getElementById('sellSearch').addEventListener('keydown',function(e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  var q=(this.value||'').trim();
+  if(!q) return;
+  // Tìm theo barcode chính xác trước
+  var byBarcode=products.find(function(p){return p.barcode&&p.barcode===q;});
+  if(byBarcode){ this.value=''; renderSell(); openATC(byBarcode); return; }
+  // Nếu chỉ còn 1 kết quả thì mở luôn
+  var ql=q.toLowerCase();
+  var matched=products.filter(function(p){return p.name.toLowerCase().includes(ql)||(p.category||'').toLowerCase().includes(ql);});
+  if(matched.length===1){ this.value=''; renderSell(); openATC(matched[0]); }
+});
 
 // ==================== ATC ====================
 function openATC(p){
@@ -1567,248 +1578,20 @@ function importJSON(){
 }
 
 // ==================== BARCODE SCANNER ====================
-// Pure JS inline EAN-13/8 decoder — no CDN, no workers, works on all iOS/Android
+// Dùng máy quét Bluetooth HID — modal này chỉ để nhập thủ công
+var _scanMode='sell';
 
-var _scanMode='sell', _scanning=false, _stream=null, _raf=null;
-var _lastCode='', _lastCodeTs=0;
-var _pendCode='', _pendCount=0; // xác nhận 2 lần liên tiếp
-
-// ---- Inline EAN-13 / EAN-8 decoder ----
-var _BD=(function(){
-  // Run-width patterns for each digit [w,b,w,b] = 7 modules
-  var L=[[3,2,1,1],[2,2,2,1],[2,1,2,2],[1,4,1,1],[1,1,3,2],[1,2,3,1],[1,1,1,4],[1,3,1,2],[1,2,1,3],[3,1,1,2]];
-  var G=[[1,1,2,3],[1,2,2,2],[2,2,1,2],[1,1,4,1],[2,3,1,1],[1,3,2,1],[4,1,1,1],[2,1,3,1],[3,1,2,1],[2,1,1,3]];
-  // R has same widths as L but starts black — handled by color check in caller
-  var FD=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
-
-  function thresh(row,w){
-    // Smooth first (3-pixel average) to reduce noise
-    var s=new Array(w);
-    s[0]=row[0];s[w-1]=row[w-1];
-    for(var i=1;i<w-1;i++)s[i]=(row[i-1]+row[i]+row[i+1])/3;
-    // Adaptive local threshold
-    var h=Math.max(Math.floor(w/12),20),b=new Array(w);
-    for(var i=0;i<w;i++){
-      var lo=Math.max(0,i-h),hi=Math.min(w-1,i+h),mn=255,mx=0;
-      for(var j=lo;j<=hi;j++){if(s[j]<mn)mn=s[j];if(s[j]>mx)mx=s[j];}
-      // Only threshold if there's meaningful contrast
-      b[i]=(mx-mn>20)&&s[i]<(mn+mx*0.45)?1:0;
-    }
-    return b;
-  }
-  function gray(d,w){var g=new Array(w);for(var i=0;i<w;i++)g[i]=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;return g;}
-  function runs(b){
-    var r=[],c=b[0],l=1;
-    for(var i=1;i<b.length;i++){if(b[i]===c)l++;else{r.push([c,l]);c=b[i];l=1;}}
-    r.push([c,l]);return r;
-  }
-  function mD(r,i,P){
-    if(i+3>=r.length)return -1;
-    var a=r[i][1],b=r[i+1][1],c=r[i+2][1],d=r[i+3][1],t=a+b+c+d;
-    if(t<4)return -1;
-    for(var n=0;n<10;n++){
-      var p=P[n];
-      if(Math.abs(a*7/t-p[0])<=1.2&&Math.abs(b*7/t-p[1])<=1.2&&
-         Math.abs(c*7/t-p[2])<=1.2&&Math.abs(d*7/t-p[3])<=1.2)return n;
-    }
-    return -1;
-  }
-  function g3(r,i){
-    if(i+2>=r.length)return false;
-    var a=r[i][1],b=r[i+1][1],c=r[i+2][1];
-    return Math.max(a,b,c)/Math.min(a,b,c)<2.5;
-  }
-  function g5(r,i){
-    if(i+4>=r.length)return false;
-    if(r[i][0]!==0||r[i+1][0]!==1||r[i+2][0]!==0||r[i+3][0]!==1||r[i+4][0]!==0)return false;
-    var v=[r[i][1],r[i+1][1],r[i+2][1],r[i+3][1],r[i+4][1]];
-    return Math.max.apply(null,v)/Math.min.apply(null,v)<2.5;
-  }
-
-  function e13(r){
-    for(var si=0;si<r.length-58;si++){
-      if(r[si][0]!==1||!g3(r,si))continue;
-      var ri=si+3,digs=[],par=[],ok=true;
-      for(var i=0;i<6;i++){
-        if(ri+3>=r.length||r[ri][0]!==0){ok=false;break;}
-        var dl=mD(r,ri,L),dg=mD(r,ri,G);
-        if(dl>=0){digs.push(dl);par.push('L');}
-        else if(dg>=0){digs.push(dg);par.push('G');}
-        else{ok=false;break;}
-        ri+=4;
-      }
-      if(!ok||!g5(r,ri))continue;ri+=5;
-      for(var i=0;i<6;i++){
-        if(ri+3>=r.length||r[ri][0]!==1){ok=false;break;}
-        var dr=mD(r,ri,L);if(dr<0){ok=false;break;}
-        digs.push(dr);ri+=4;
-      }
-      if(!ok||ri+2>=r.length||r[ri][0]!==1||!g3(r,ri))continue;
-      var fd=FD.indexOf(par.join(''));if(fd<0)continue;
-      var all=[fd].concat(digs),sum=0;
-      for(var i=0;i<12;i++)sum+=all[i]*(i%2?3:1);
-      if((10-sum%10)%10!==all[12])continue;
-      return all.join('');
-    }
-    return null;
-  }
-
-  function e8(r){
-    for(var si=0;si<r.length-42;si++){
-      if(r[si][0]!==1||!g3(r,si))continue;
-      var ri=si+3,digs=[],ok=true;
-      for(var i=0;i<4;i++){
-        if(ri+3>=r.length||r[ri][0]!==0){ok=false;break;}
-        var d=mD(r,ri,L);if(d<0){ok=false;break;}digs.push(d);ri+=4;
-      }
-      if(!ok||!g5(r,ri))continue;ri+=5;
-      for(var i=0;i<4;i++){
-        if(ri+3>=r.length||r[ri][0]!==1){ok=false;break;}
-        var d=mD(r,ri,L);if(d<0){ok=false;break;}digs.push(d);ri+=4;
-      }
-      if(!ok||ri+2>=r.length||r[ri][0]!==1||!g3(r,ri))continue;
-      var sum=0,wt=[3,1,3,1,3,1,3];
-      for(var i=0;i<7;i++)sum+=digs[i]*wt[i];
-      if((10-sum%10)%10!==digs[7])continue;
-      return digs.join('');
-    }
-    return null;
-  }
-
-  function decode(canvas){
-    var w=canvas.width,h=canvas.height;
-    if(w<100)return null;
-    var ctx=canvas.getContext('2d');
-    // Quét 10 dòng ngang, yêu cầu >=2 dòng cho ra cùng mã mới chấp nhận
-    var counts={};
-    for(var yp=20;yp<=80;yp+=6){
-      var y=Math.floor(h*yp/100);
-      var d=ctx.getImageData(0,y,w,1).data;
-      var b=thresh(gray(d,w),w);
-      var r=runs(b);
-      var code=e13(r)||e8(r);
-      if(code){
-        counts[code]=(counts[code]||0)+1;
-        if(counts[code]>=2)return code; // >=2 dòng đồng thuận → chắc chắn
-      }
-    }
-    return null;
-  }
-  return{decode:decode};
-})();
-
-// ---- Scanner UI & Camera ----
 function openScanner(mode){
   _scanMode=mode||'sell';
   document.getElementById('scanModal').classList.add('on');
-  document.getElementById('scan-status').textContent='Đang khởi động...';
+  document.getElementById('scan-status').textContent='';
   document.getElementById('scan-manual').value='';
-  setTimeout(_startScanner,300);
+  setTimeout(function(){ document.getElementById('scan-manual').focus(); },100);
 }
-function openScannerForProduct(){openScanner('product');}
+function openScannerForProduct(){ openScanner('product'); }
 
 function closeScanner(){
-  _stopScanner();
   document.getElementById('scanModal').classList.remove('on');
-}
-
-function _onCode(code){
-  if(!code||!_scanning)return;
-  var now=Date.now();
-  if(code===_lastCode&&now-_lastCodeTs<3000)return;
-  // Yêu cầu cùng mã xuất hiện 2 lần liên tiếp
-  if(code===_pendCode){
-    _pendCount++;
-    if(_pendCount>=2){
-      _pendCode='';_pendCount=0;
-      _lastCode=code;_lastCodeTs=now;
-      if(navigator.vibrate)navigator.vibrate(80);
-      onBarcodeFound(code);
-    }
-  }else{
-    _pendCode=code;_pendCount=1;
-  }
-}
-
-function _startScanner(){
-  _stopScanner();_scanning=true;
-  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
-    _startLiveScanner();
-  }else{
-    _startPhotoScanner();
-  }
-}
-
-function _startLiveScanner(){
-  var el=document.getElementById('reader');
-  el.innerHTML='';
-  navigator.mediaDevices.getUserMedia({
-    video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
-  }).then(function(stream){
-    _stream=stream;
-    var v=document.createElement('video');
-    v.srcObject=stream;v.setAttribute('playsinline','');v.muted=true;
-    v.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
-    var c=document.createElement('canvas');c.style.display='none';
-    el.appendChild(v);el.appendChild(c);
-    return v.play().then(function(){return{v:v,c:c};});
-  }).then(function(vc){
-    document.getElementById('scan-status').textContent='📷 Hướng camera vào mã vạch';
-    var v=vc.v,c=vc.c;
-    function loop(){
-      if(!_scanning)return;
-      if(v.readyState>=2){
-        c.width=Math.min(v.videoWidth,640);
-        c.height=Math.min(v.videoHeight,480);
-        c.getContext('2d').drawImage(v,0,0,c.width,c.height);
-        var code=_BD.decode(c);
-        if(code)_onCode(code);
-      }
-      _raf=setTimeout(loop,200);
-    }
-    loop();
-  }).catch(function(){
-    _startPhotoScanner();
-  });
-}
-
-function _startPhotoScanner(){
-  document.getElementById('reader').innerHTML=
-    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:#fff">'
-    +'<div style="font-size:48px">📸</div>'
-    +'<div style="font-size:15px;font-weight:700">Chụp ảnh mã vạch</div>'
-    +'<button onclick="_triggerPhotoCapture()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;min-height:48px">📷 Mở camera</button>'
-    +'<div style="font-size:12px;opacity:.6;text-align:center;padding:0 24px">Chụp gần, đủ sáng, barcode nằm ngang</div>'
-    +'</div>';
-  document.getElementById('scan-status').textContent='Chế độ chụp ảnh';
-}
-
-function _triggerPhotoCapture(){
-  var input=document.getElementById('barcode-capture');
-  input.onchange=function(e){
-    var file=e.target.files[0];input.value='';
-    if(!file)return;
-    document.getElementById('scan-status').textContent='⏳ Đang nhận diện...';
-    var img=new Image(),url=URL.createObjectURL(file);
-    img.onload=function(){
-      var c=document.createElement('canvas');
-      c.width=img.width;c.height=img.height;
-      c.getContext('2d').drawImage(img,0,0);
-      URL.revokeObjectURL(url);
-      var code=_BD.decode(c);
-      if(code){_onCode(code);}
-      else{document.getElementById('scan-status').textContent='⚠️ Không nhận ra. Chụp lại (gần hơn, đủ sáng, barcode nằm ngang).';}
-    };
-    img.src=url;
-  };
-  input.click();
-}
-
-function _stopScanner(){
-  _scanning=false;
-  if(_raf){clearTimeout(_raf);_raf=null;}
-  if(_stream){_stream.getTracks().forEach(function(t){t.stop();});_stream=null;}
-  var el=document.getElementById('reader');if(el)el.innerHTML='';
 }
 
 function onBarcodeFound(code){
