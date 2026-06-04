@@ -125,19 +125,25 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 .scan-btn svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
 
 /* SCANNER MODAL */
-#scanModal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:flex-end}
+#scanModal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;
+  align-items:flex-end;justify-content:center}
 #scanModal.on{display:flex}
-#scanModal-header{padding:16px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--br)}
-#scanModal-header h2{font-size:16px;font-weight:700;flex:1;color:var(--tx)}
-#scan-close{background:var(--bg);border:none;color:var(--mu);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
-#scanModal-body{padding:20px 16px;padding-bottom:calc(20px + var(--sab))}
-#scan-hint{font-size:13px;color:var(--mu);margin-bottom:16px;text-align:center;line-height:1.5}
+#scan-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:600px;
+  box-shadow:0 -4px 24px rgba(0,0,0,.15);padding-bottom:var(--sab)}
+#scanModal-header{padding:12px 16px;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--br)}
+#scanModal-header h2{font-size:17px;font-weight:700;flex:1;color:var(--tx)}
+#scan-close{background:var(--bg);border:none;color:var(--mu);border-radius:8px;
+  padding:8px 14px;font-size:13px;font-weight:600}
+#scanModal-body{padding:16px 16px 24px}
+#scan-hint{font-size:13px;color:var(--mu);margin-bottom:14px;text-align:center;line-height:1.5}
 #scan-status{font-size:13px;color:var(--d);margin-top:10px;min-height:18px;text-align:center}
 #scan-manual-wrap{display:flex;gap:8px}
-#scan-manual{flex:1;border:2px solid var(--p);border-radius:10px;padding:12px 14px;font-size:16px;color:var(--tx);background:#fff;outline:none}
+#scan-manual{flex:1;border:2px solid var(--p);border-radius:10px;padding:12px 14px;
+  font-size:16px;color:var(--tx);background:#fff;outline:none}
 #scan-manual::placeholder{color:var(--mu)}
-#scan-manual-btn{background:var(--p);border:none;color:#fff;border-radius:10px;padding:12px 18px;font-size:14px;font-weight:700}
-#scanModal>div:last-child{background:#fff;border-radius:20px 20px 0 0;width:100%;box-shadow:0 -4px 20px rgba(0,0,0,.15)}
+#scan-manual-btn{background:var(--p);border:none;color:#fff;border-radius:10px;
+  padding:12px 18px;font-size:14px;font-weight:700;white-space:nowrap}
 
 /* PRODUCT LIST */
 .pgrid{display:flex;flex-direction:column;gap:7px}
@@ -395,19 +401,22 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
   <div class="pgrid" id="pgrid"></div>
 </div>
 
-<!-- MODAL: NHẬP MÃ VẠCh THỦ CÔNG -->
-<div id="scanModal">
-  <div id="scanModal-header">
-    <h2>🔍 Nhập mã vạch</h2>
-    <button id="scan-close" onclick="closeScanner()">✕ Đóng</button>
-  </div>
-  <div id="scanModal-body">
-    <div id="scan-hint">Dùng máy quét Bluetooth hoặc nhập mã vạch thủ công</div>
-    <div id="scan-manual-wrap">
-      <input id="scan-manual" type="text" placeholder="Nhập hoặc quét mã vạch..." inputmode="numeric" autofocus>
-      <button id="scan-manual-btn">Tìm</button>
+<!-- MODAL: NHẬP MÃ VẠCH THỦ CÔNG -->
+<div id="scanModal" onclick="if(event.target===this)closeScanner()">
+  <div id="scan-sheet">
+    <div class="drag" style="width:40px;height:4px;background:#d1d5db;border-radius:2px;margin:10px auto 0"></div>
+    <div id="scanModal-header">
+      <h2>🔍 Nhập mã vạch</h2>
+      <button id="scan-close" onclick="closeScanner()">✕ Đóng</button>
     </div>
-    <div id="scan-status"></div>
+    <div id="scanModal-body">
+      <div id="scan-hint">Dùng máy quét Bluetooth hoặc nhập thủ công</div>
+      <div id="scan-manual-wrap">
+        <input id="scan-manual" type="text" placeholder="Nhập hoặc quét mã vạch..." inputmode="numeric">
+        <button id="scan-manual-btn">Tìm</button>
+      </div>
+      <div id="scan-status"></div>
+    </div>
   </div>
 </div>
 
