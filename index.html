@@ -980,27 +980,26 @@ document.getElementById('sellSearch').addEventListener('keydown',function(e){
 });
 
 // ==================== GLOBAL BARCODE SCANNER (Bluetooth HID) ====================
-// Nhận input từ máy quét bất kể element nào đang focus
-// Phân biệt scanner vs người dùng gõ bằng tốc độ: scanner < 30ms/ký tự
+// Không dùng timing check (BLE có thể chậm) — dùng element check thay thế
 (function(){
-  var buf='', times=[], timer=null;
+  var buf='', timer=null;
+  // Các input mà khi đang focus thì KHÔNG bắt scanner
+  var SKIP={
+    'pm-name':1,'pm-cat':1,'pm-bu':1,'pm-sp':1,'pm-bp':1,
+    'pm-low':1,'pm-stock':1,'pm-big':1,'pm-ratio':1,'pm-bigp':1,
+    'imp-price':1,'imp-note':1,'loginEmail':1,'loginPass':1
+  };
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter'){
       clearTimeout(timer);
-      var code=buf, t=times.slice();
-      buf=''; times=[];
-      if(code.length<6) return; // barcode tối thiểu 6 ký tự
-      if(t.length<2) return;
-      var avg=(t[t.length-1]-t[0])/(t.length-1);
-      if(avg>60) return; // người gõ bình thường > 60ms/ký tự → bỏ qua
-      // Đây là barcode từ máy quét
-      e.preventDefault();
-      e.stopPropagation();
+      var code=buf; buf='';
+      if(code.length<4) return;
+      var act=document.activeElement, aid=act?act.id:'';
+      if(SKIP[aid]) return; // đang gõ tay trong input thông thường
+      e.preventDefault(); e.stopPropagation();
       if(curPage==='inv'){
-        // Đang ở Kho → nhập hàng
         onBarcodeFoundInv(code);
       } else {
-        // Bất kỳ trang nào khác → ưu tiên Bán hàng
         if(curPage!=='sell') goPage('sell');
         var ss=document.getElementById('sellSearch');
         if(ss){ ss.value=''; renderSell(); }
@@ -1009,12 +1008,13 @@ document.getElementById('sellSearch').addEventListener('keydown',function(e){
       return;
     }
     if(e.key.length===1){
+      var act=document.activeElement, aid=act?act.id:'';
+      if(SKIP[aid]){ buf=''; return; }
       buf+=e.key;
-      times.push(Date.now());
       clearTimeout(timer);
-      timer=setTimeout(function(){ buf=''; times=[]; },300);
+      timer=setTimeout(function(){ buf=''; },500);
     }
-  }, true); // capture phase - nhận trước các handler khác
+  }, true);
 })();
 
 // ==================== ATC ====================
@@ -1309,6 +1309,8 @@ function renderImportForm(){
   var el=document.getElementById('iv-import');
   el.innerHTML='<div class="card"><div class="sttl">Nhập hàng mới</div>'
     +'<div class="fg"><div class="lbl">Tìm sản phẩm</div>'
+    +'<div style="background:#eff6ff;border:1.5px dashed #93c5fd;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#1d4ed8;display:flex;align-items:center;gap:6px">'
+    +'<span style="font-size:16px">📡</span><span>Quét mã vạch bằng máy Bluetooth để tự động chọn sản phẩm</span></div>'
     +'<div class="sr" style="margin-bottom:6px">'
     +'<svg class="sr-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
     +'<input id="imp-search" type="text" placeholder="Gõ tên sản phẩm..." autocomplete="off" oninput="renderImpResults()">'
