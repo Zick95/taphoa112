@@ -968,19 +968,50 @@ function renderSell(){
   });
 }
 document.getElementById('sellSearch').addEventListener('input',renderSell);
+// Tìm kiếm thủ công: Enter khi có 1 kết quả khớp tên
 document.getElementById('sellSearch').addEventListener('keydown',function(e){
   if(e.key!=='Enter') return;
   e.preventDefault();
   var q=(this.value||'').trim();
   if(!q) return;
-  // Tìm theo barcode chính xác trước
-  var byBarcode=products.find(function(p){return p.barcode&&p.barcode===q;});
-  if(byBarcode){ this.value=''; renderSell(); onBarcodeFound(q); return; }
-  // Nếu chỉ còn 1 kết quả thì mở luôn
   var ql=q.toLowerCase();
   var matched=products.filter(function(p){return p.name.toLowerCase().includes(ql)||(p.category||'').toLowerCase().includes(ql);});
   if(matched.length===1){ this.value=''; renderSell(); openATC(matched[0]); }
 });
+
+// ==================== GLOBAL BARCODE SCANNER (Bluetooth HID) ====================
+// Nhận input từ máy quét bất kể element nào đang focus
+// Phân biệt scanner vs người dùng gõ bằng tốc độ: scanner < 30ms/ký tự
+(function(){
+  var buf='', times=[], timer=null;
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter'){
+      clearTimeout(timer);
+      var code=buf, t=times.slice();
+      buf=''; times=[];
+      if(code.length<6) return; // barcode tối thiểu 6 ký tự
+      if(t.length<2) return;
+      var avg=(t[t.length-1]-t[0])/(t.length-1);
+      if(avg>60) return; // người gõ bình thường > 60ms/ký tự → bỏ qua
+      // Đây là barcode từ máy quét
+      if(curPage==='sell'){
+        e.preventDefault();
+        e.stopPropagation();
+        // Xóa sellSearch nếu đang có nội dung
+        var ss=document.getElementById('sellSearch');
+        if(ss) { ss.value=''; renderSell(); }
+        onBarcodeFound(code);
+      }
+      return;
+    }
+    if(e.key.length===1){
+      buf+=e.key;
+      times.push(Date.now());
+      clearTimeout(timer);
+      timer=setTimeout(function(){ buf=''; times=[]; },300);
+    }
+  }, true); // capture phase - nhận trước các handler khác
+})();
 
 // ==================== ATC ====================
 function openATC(p){
