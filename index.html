@@ -994,12 +994,16 @@ document.getElementById('sellSearch').addEventListener('keydown',function(e){
       var avg=(t[t.length-1]-t[0])/(t.length-1);
       if(avg>60) return; // người gõ bình thường > 60ms/ký tự → bỏ qua
       // Đây là barcode từ máy quét
-      if(curPage==='sell'){
-        e.preventDefault();
-        e.stopPropagation();
-        // Xóa sellSearch nếu đang có nội dung
+      e.preventDefault();
+      e.stopPropagation();
+      if(curPage==='inv'){
+        // Đang ở Kho → nhập hàng
+        onBarcodeFoundInv(code);
+      } else {
+        // Bất kỳ trang nào khác → ưu tiên Bán hàng
+        if(curPage!=='sell') goPage('sell');
         var ss=document.getElementById('sellSearch');
-        if(ss) { ss.value=''; renderSell(); }
+        if(ss){ ss.value=''; renderSell(); }
         onBarcodeFound(code);
       }
       return;
@@ -1671,6 +1675,21 @@ function onBarcodeFound(code){
     // Chưa có modal → mở bình thường
     openATC(p);
   }
+}
+
+// ==================== BARCODE → NHẬP KHO ====================
+function onBarcodeFoundInv(code){
+  var p=products.find(function(x){return x.barcode&&x.barcode===code;});
+  if(!p){ toast('⚠️ Mã "'+code+'" chưa có sản phẩm nào'); return; }
+  // Chuyển sang tab Nhập hàng nếu chưa ở đó
+  var needSwitch=curInvTab!=='import';
+  if(needSwitch) switchInv('import');
+  setTimeout(function(){
+    selectImpProd(p.id);
+    var qtyEl=document.getElementById('imp-qty');
+    if(qtyEl){ qtyEl.value=''; qtyEl.focus(); }
+    toast('✓ Đã chọn: '+p.name+' — nhập số lượng');
+  }, needSwitch?120:0);
 }
 
 // ==================== SWIPE TO CLOSE ====================
