@@ -512,7 +512,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
       <div class="lbl">Số lượng</div>
       <div class="qbig">
         <button onclick="atcQtyDelta(-1)">−</button>
-        <input type="number" id="atc-qty" value="1" min="0.01" oninput="atcUpdate()">
+        <input type="number" id="atc-qty" value="1" min="0.01" inputmode="decimal" oninput="atcUpdate()">
         <button onclick="atcQtyDelta(1)">+</button>
       </div>
     </div>
@@ -559,7 +559,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     </div>
     <div class="fg">
       <div class="lbl">Tiền khách đưa</div>
-      <input type="number" id="pay-money" placeholder="Nhập số tiền..." style="font-size:18px;font-weight:700" oninput="calcChange()">
+      <input type="number" id="pay-money" placeholder="Nhập số tiền..." style="font-size:18px;font-weight:700" inputmode="numeric" oninput="calcChange()">
       <div class="qamts" id="pay-amts"></div>
     </div>
     <div id="changeBox" style="display:none" class="cbox ok">
@@ -603,7 +603,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <div class="fg"><div class="lbl">Danh mục</div><input type="text" id="pm-cat" placeholder="Đồ uống, Bánh kẹo..."></div>
     <div class="fr">
       <div class="fg"><div class="lbl">Đơn vị nhỏ *</div><input type="text" id="pm-bu" placeholder="chai, cái, kg..."></div>
-      <div class="fg"><div class="lbl">Giá bán / đvt *</div><input type="number" id="pm-sp" placeholder="0"></div>
+      <div class="fg"><div class="lbl">Giá bán / đvt *</div><input type="number" id="pm-sp" placeholder="0" inputmode="decimal"></div>
     </div>
     <button type="button" class="tgl-row" onclick="toggleDec()">
       <div class="tgl" id="dec-tgl"><div class="tglk"></div></div>
@@ -616,15 +616,15 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
     <div id="big-sec" style="display:none">
       <div class="fr">
         <div class="fg"><div class="lbl">Tên đvt lớn</div><input type="text" id="pm-big" placeholder="thùng, bao..."></div>
-        <div class="fg"><div class="lbl">1 lớn = ? nhỏ</div><input type="number" id="pm-ratio" placeholder="VD: 6, 24"></div>
+        <div class="fg"><div class="lbl">1 lớn = ? nhỏ</div><input type="number" id="pm-ratio" placeholder="VD: 6, 24" inputmode="numeric"></div>
       </div>
-      <div class="fg"><div class="lbl">Giá bán / đvt lớn</div><input type="number" id="pm-bigp" placeholder="0 = tự tính"></div>
+      <div class="fg"><div class="lbl">Giá bán / đvt lớn</div><input type="number" id="pm-bigp" placeholder="0 = tự tính" inputmode="decimal"></div>
     </div>
     <div class="fr">
-      <div class="fg"><div class="lbl">Giá nhập / đvt nhỏ</div><input type="number" id="pm-bp" placeholder="0"></div>
-      <div class="fg"><div class="lbl">Cảnh báo tồn ≤</div><input type="number" id="pm-low" placeholder="5"></div>
+      <div class="fg"><div class="lbl">Giá nhập / đvt nhỏ</div><input type="number" id="pm-bp" placeholder="0" inputmode="decimal"></div>
+      <div class="fg"><div class="lbl">Cảnh báo tồn ≤</div><input type="number" id="pm-low" placeholder="5" inputmode="numeric"></div>
     </div>
-    <div class="fg"><div class="lbl">Tồn kho ban đầu</div><input type="number" id="pm-stock" placeholder="0" step="any"></div>
+    <div class="fg"><div class="lbl">Tồn kho ban đầu</div><input type="number" id="pm-stock" placeholder="0" step="any" inputmode="decimal"></div>
     <div class="fr" style="margin-top:10px">
       <button class="btn bo bbl" onclick="closeOvl('ovl-prod')">Hủy</button>
       <button class="btn bp bbl" onclick="saveProd()">💾 Lưu</button>
@@ -1325,8 +1325,8 @@ function renderImportForm(){
     +'<div id="imp-sel-stock" style="font-size:11px;color:var(--mu)"></div>'
     +'</div>'
     +'<div class="fg" id="imp-unit-wrap" style="display:none"><div class="lbl">Nhập theo đơn vị</div><div class="utabs" id="imp-unit-tabs"></div></div>'
-    +'<div class="fr"><div class="fg"><div class="lbl">Số lượng *</div><input type="number" id="imp-qty" placeholder="0" min="0.01" step="any"></div>'
-    +'<div class="fg"><div class="lbl">Giá nhập / đvt</div><input type="number" id="imp-price" placeholder="0"></div></div>'
+    +'<div class="fr"><div class="fg"><div class="lbl">Số lượng *</div><input type="number" id="imp-qty" placeholder="0" min="0.01" step="any" inputmode="decimal"></div>'
+    +'<div class="fg"><div class="lbl">Giá nhập / đvt</div><input type="number" id="imp-price" placeholder="0" inputmode="decimal"></div></div>'
     +'<div class="fg"><div class="lbl">Ghi chú</div><input type="text" id="imp-note" placeholder="Nhà cung cấp..."></div>'
     +'<button class="btn bp bbl" style="margin-top:4px" onclick="doImport()">📦 Xác nhận nhập hàng</button>'
     +'</div>';
