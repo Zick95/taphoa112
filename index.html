@@ -1502,11 +1502,123 @@ function renderMonth(){
 }
 function renderAllHist(){ document.getElementById('rp-all').innerHTML=saleRows(sales); }
 
-// ==================== PHÂN TÍCH ====================
+// ==================== PHÂN TÍCH NÂNG CAO ====================
+var curAnalysisMonth=tm();
+function shiftAnalysis(d){
+  var p=curAnalysisMonth.split('-'),y=parseInt(p[0]),m=parseInt(p[1])+d;
+  if(m>12){m=1;y++;}else if(m<1){m=12;y--;}
+  curAnalysisMonth=y+'-'+String(m).padStart(2,'0');
+  renderAnalysis();
+}
+
+function calcProductStats(ss){
+  var pStats={};
+  ss.forEach(function(s){
+    s.items.forEach(function(it){
+      if(!pStats[it.id]) pStats[it.id]={id:it.id,name:it.name,qty:0,rev:0,profit:0,orders:0};
+      var bq=it.qty*(it.unitRatio||1);
+      var p=products.find(function(x){return x.id===it.id;});
+      var cost=p&&p.buyPrice?p.buyPrice*bq:0;
+      pStats[it.id].qty+=bq;
+      pStats[it.id].rev+=it.unitPrice*it.qty;
+      pStats[it.id].profit+=(it.unitPrice*it.qty)-cost;
+      pStats[it.id].orders++;
+    });
+  });
+  return Object.values(pStats);
+}
+
+function prevMonth(ym){
+  var p=ym.split('-'),y=parseInt(p[0]),m=parseInt(p[1])-1;
+  if(m<1){m=12;y--;} return y+'-'+String(m).padStart(2,'0');
+}
+
+function deltaChip(cur,prev){
+  if(!prev||prev===0) return '';
+  var pct=Math.round((cur-prev)/prev*100);
+  var up=pct>=0;
+  return '<span style="font-size:11px;font-weight:700;color:'+(up?'#16a34a':'#dc2626')+';background:'+(up?'#dcfce7':'#fee2e2')+';border-radius:20px;padding:2px 7px;margin-left:6px">'+(up?'▲':'▼')+Math.abs(pct)+'%</span>';
+}
+
+function smartInsights(st,prev,arr,prevArr,sold,ym){
+  var lines=[];
+  var margin=st.rev>0?Math.round(st.profit/st.rev*100):0;
+  var prevMargin=prev&&prev.rev>0?Math.round(prev.profit/prev.rev*100):0;
+
+  // Nhận xét tổng quan
+  var overall='';
+  if(st.orders===0){
+    overall='Chưa có đơn hàng nào trong '+fmMonth(ym)+'. Hãy đảm bảo nhập đơn đầy đủ vào app.';
+  } else {
+    var trend='';
+    if(prev&&prev.rev>0){
+      var pct=Math.round((st.rev-prev.rev)/prev.rev*100);
+      if(pct>10) trend='Tháng này tăng trưởng tốt so với tháng trước (+'+pct+'%). ';
+      else if(pct>0) trend='Doanh thu nhích nhẹ so với tháng trước (+'+pct+'%). ';
+      else if(pct>-10) trend='Doanh thu giảm nhẹ so với tháng trước ('+pct+'%). ';
+      else trend='Doanh thu giảm đáng kể so với tháng trước ('+pct+'%). ';
+    }
+    var marg='';
+    if(margin>=30) marg='Biên lợi nhuận '+margin+'% — rất tốt.';
+    else if(margin>=20) marg='Biên lợi nhuận '+margin+'% — khá ổn.';
+    else if(margin>=10) marg='Biên lợi nhuận '+margin+'% — còn thấp, nên rà soát lại giá nhập.';
+    else marg='Biên lợi nhuận chỉ '+margin+'% — cần kiểm tra ngay giá bán/giá nhập.';
+    overall=trend+marg;
+  }
+  lines.push({icon:'📊',color:'#1d4ed8',bg:'#eff6ff',label:'Tổng quan',text:overall});
+
+  // Cảnh báo tồn kho
+  var noSale=products.filter(function(p){return parseFloat(p.stock)>5&&!(sold[p.id]>0);});
+  if(noSale.length>0){
+    lines.push({icon:'⚠️',color:'#92400e',bg:'#fffbeb',label:'Tồn kho không bán được',
+      text:noSale.slice(0,4).map(function(p){return p.name+' (tồn '+parseFloat(p.stock).toFixed(0)+')';}).join(', ')
+        +(noSale.length>4?' và '+(noSale.length-4)+' mặt hàng khác':'')
+        +'. Cân nhắc giảm giá hoặc combo.'});
+  }
+
+  // Top sản phẩm đóng góp chính
+  if(arr.length>0&&st.rev>0){
+    var topR=[].concat(arr).sort(function(a,b){return b.rev-a.rev;})[0];
+    var pct=Math.round(topR.rev/st.rev*100);
+    if(pct>35){
+      lines.push({icon:'🎯',color:'#7c3aed',bg:'#f5f3ff',label:'Sản phẩm chủ lực',
+        text:'"'+topR.name+'" chiếm '+pct+'% doanh thu. Đảm bảo luôn đủ hàng mặt hàng này.'});
+    }
+  }
+
+  // So sánh margin với tháng trước
+  if(prev&&prev.rev>0&&margin<prevMargin-5){
+    lines.push({icon:'📉',color:'#dc2626',bg:'#fef2f2',label:'Margin giảm',
+      text:'Biên lợi nhuận tháng này ('+margin+'%) thấp hơn tháng trước ('+prevMargin+'%). Kiểm tra lại giá nhập có tăng không.'});
+  }
+
+  // Dự đoán tháng tới
+  if(st.orders>0&&prev&&prev.orders>0){
+    var avgGrowth=st.rev>0&&prev.rev>0?st.rev/prev.rev:1;
+    var forecast=Math.round(st.rev*avgGrowth);
+    lines.push({icon:'🔮',color:'#0891b2',bg:'#ecfeff',label:'Dự đoán tháng tới',
+      text:'Dựa trên xu hướng hiện tại, doanh thu tháng tới ước đạt ~'+fm(forecast)+'. '
+        +(avgGrowth>1?'Tăng trưởng đang tích cực.':'Cần nỗ lực hơn để cải thiện.')});
+  } else if(st.orders>0){
+    lines.push({icon:'🔮',color:'#0891b2',bg:'#ecfeff',label:'Dự đoán tháng tới',
+      text:'Cần thêm dữ liệu nhiều tháng để dự đoán chính xác hơn.'});
+  }
+
+  if(lines.length===0) return '';
+  return'<div class="card"><div class="sttl">🤖 Nhận xét & Dự đoán</div>'
+    +lines.map(function(l){
+      return'<div style="background:'+l.bg+';border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+        +'<div style="font-size:12px;font-weight:700;color:'+l.color+';margin-bottom:4px">'+l.icon+' '+l.label+'</div>'
+        +'<div style="font-size:13px;color:#374151;line-height:1.5">'+l.text+'</div>'
+        +'</div>';
+    }).join('')+'</div>';
+}
+
 function renderAnalysis(){
-  // Cho phép chọn tháng
   var el=document.getElementById('rp-analysis');
   var isCur=curAnalysisMonth===tm();
+
+  // ── Điều hướng tháng ──
   var nav='<div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:10px;padding:8px 12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
     +'<button class="btn bo bsm" onclick="shiftAnalysis(-1)">‹ Trước</button>'
     +'<div style="font-size:14px;font-weight:700;color:var(--tx)">'+fmMonth(curAnalysisMonth)+'</div>'
@@ -1514,91 +1626,101 @@ function renderAnalysis(){
     +'</div>';
 
   var ss=sales.filter(function(s){return s.month===curAnalysisMonth;});
+  var pm=prevMonth(curAnalysisMonth);
+  var ssPrev=sales.filter(function(s){return s.month===pm;});
 
-  // ── Tổng kết tháng ──
   var st=calcStats(ss);
-  var summary='<div class="card" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;margin-bottom:10px">'
-    +'<div style="font-size:13px;opacity:.8;margin-bottom:8px">📅 Tổng kết '+fmMonth(curAnalysisMonth)+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    +'<div><div style="font-size:11px;opacity:.7">Doanh thu</div><div style="font-size:18px;font-weight:800">'+fm(st.rev)+'</div></div>'
-    +'<div><div style="font-size:11px;opacity:.7">Lợi nhuận</div><div style="font-size:18px;font-weight:800">'+fm(st.profit)+'</div></div>'
-    +'<div><div style="font-size:11px;opacity:.7">Số đơn</div><div style="font-size:16px;font-weight:700">'+st.orders+'</div></div>'
-    +'<div><div style="font-size:11px;opacity:.7">Mặt hàng bán</div><div style="font-size:16px;font-weight:700">'+st.items+'</div></div>'
+  var prev=ssPrev.length?calcStats(ssPrev):null;
+  var arr=calcProductStats(ss);
+  var arrPrev=calcProductStats(ssPrev);
+  var sold={}; arr.forEach(function(x){sold[x.id]=x.qty;});
+  var soldPrev={}; arrPrev.forEach(function(x){soldPrev[x.id]=x.qty;});
+
+  var margin=st.rev>0?Math.round(st.profit/st.rev*100):0;
+  var avgOrder=st.orders>0?Math.round(st.rev/st.orders):0;
+
+  // ── Thẻ tổng quan ──
+  var summary='<div class="card" style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:16px">'
+    +'<div style="font-size:12px;opacity:.75;margin-bottom:10px;letter-spacing:.5px">📅 TỔNG KẾT '+fmMonth(curAnalysisMonth).toUpperCase()+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<div><div style="font-size:10px;opacity:.7;margin-bottom:2px">Doanh thu</div>'
+      +'<div style="font-size:20px;font-weight:800">'+fm(st.rev)+'</div>'
+      +(prev?'<div style="font-size:11px;opacity:.65">'+fmMonth(pm)+': '+fm(prev.rev)+deltaChip(st.rev,prev.rev)+'</div>':'')
+    +'</div>'
+    +'<div><div style="font-size:10px;opacity:.7;margin-bottom:2px">Lợi nhuận</div>'
+      +'<div style="font-size:20px;font-weight:800">'+fm(st.profit)+'</div>'
+      +(prev?'<div style="font-size:11px;opacity:.65">Margin: '+margin+'%'+deltaChip(margin,prevMonth&&prev?Math.round(prev.profit/prev.rev*100):0)+'</div>':'<div style="font-size:11px;opacity:.65">Margin: '+margin+'%</div>')
+    +'</div>'
+    +'<div><div style="font-size:10px;opacity:.7;margin-bottom:2px">Số đơn</div>'
+      +'<div style="font-size:18px;font-weight:700">'+st.orders+'</div>'
+      +(prev?'<div style="font-size:11px;opacity:.65">Tháng trước: '+prev.orders+deltaChip(st.orders,prev.orders)+'</div>':'')
+    +'</div>'
+    +'<div><div style="font-size:10px;opacity:.7;margin-bottom:2px">Đơn TB</div>'
+      +'<div style="font-size:18px;font-weight:700">'+fm(avgOrder)+'</div>'
+      +(prev&&prev.orders>0?'<div style="font-size:11px;opacity:.65">Tháng trước: '+fm(Math.round(prev.rev/prev.orders))+deltaChip(avgOrder,Math.round(prev.rev/prev.orders))+'</div>':'')
+    +'</div>'
     +'</div></div>';
 
-  // ── Tính thống kê theo sản phẩm ──
-  var pStats={};
-  ss.forEach(function(s){
-    s.items.forEach(function(it){
-      var key=it.id;
-      if(!pStats[key]) pStats[key]={id:it.id,name:it.name,qty:0,rev:0,profit:0,orders:0};
-      var baseQty=it.qty*(it.unitRatio||1);
-      var p=products.find(function(x){return x.id===it.id;});
-      var cost=p&&p.buyPrice?p.buyPrice*baseQty:0;
-      pStats[key].qty+=baseQty;
-      pStats[key].rev+=it.unitPrice*it.qty;
-      pStats[key].profit+=(it.unitPrice*it.qty)-cost;
-      pStats[key].orders++;
-    });
-  });
-  var arr=Object.values(pStats);
-
-  function topCard(title,icon,color,items,valFn,labelFn){
-    if(!items.length) return '<div class="card"><div class="sttl">'+icon+' '+title+'</div><div class="empty">Chưa có dữ liệu</div></div>';
+  // ── Hàm tạo top card với bar chart ──
+  function topCard(title,icon,color,items,valFn,labelFn,prevSold){
+    if(!items.length) return'<div class="card"><div class="sttl">'+icon+' '+title+'</div><div class="empty">Chưa có dữ liệu</div></div>';
+    var maxVal=valFn(items[0])||1;
     return'<div class="card"><div class="sttl">'+icon+' '+title+'</div>'
       +items.map(function(x,i){
-        var bar=items[0]?Math.round(valFn(x)/valFn(items[0])*100):0;
-        return'<div style="margin-bottom:10px">'
-          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
-          +'<span style="font-size:13px;font-weight:600">'+['🥇','🥈','🥉','4️⃣','5️⃣'][i]+' '+x.name+'</span>'
-          +'<span style="font-size:13px;font-weight:700;color:'+color+'">'+labelFn(x)+'</span></div>'
-          +'<div style="height:6px;background:#f1f5f9;border-radius:3px">'
-          +'<div style="height:6px;background:'+color+';border-radius:3px;width:'+bar+'%"></div></div>'
+        var bar=Math.round(valFn(x)/maxVal*100);
+        var medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+        return'<div style="margin-bottom:12px">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+          +'<span style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+medals[i]+' '+x.name+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:'+color+';margin-left:8px;white-space:nowrap">'+labelFn(x)+'</span></div>'
+          +'<div style="height:7px;background:#f1f5f9;border-radius:4px">'
+          +'<div style="height:7px;background:'+color+';border-radius:4px;width:'+bar+'%;transition:width .4s ease"></div></div>'
           +'</div>';
       }).join('')+'</div>';
   }
 
-  // Top 5 bán chạy (theo số lượng đơn vị cơ bản)
   var top5qty=[].concat(arr).sort(function(a,b){return b.qty-a.qty;}).slice(0,5);
   var t1=topCard('Bán chạy nhất','🔥','#ef4444',top5qty,
     function(x){return x.qty;},
-    function(x){return fmn(x.qty)+' đvt · '+x.orders+' đơn';});
+    function(x){return fmn(x.qty)+' đvt · '+x.orders+' đơn';},soldPrev);
 
-  // Top 5 doanh thu
   var top5rev=[].concat(arr).sort(function(a,b){return b.rev-a.rev;}).slice(0,5);
   var t2=topCard('Doanh thu cao nhất','💰','#2563eb',top5rev,
     function(x){return x.rev;},
-    function(x){return fm(x.rev);});
+    function(x){
+      var pct=st.rev>0?Math.round(x.rev/st.rev*100):0;
+      return fm(x.rev)+' ('+pct+'%)';
+    });
 
-  // Top 5 lợi nhuận
   var top5prf=[].concat(arr).sort(function(a,b){return b.profit-a.profit;}).slice(0,5);
   var t3=topCard('Lợi nhuận cao nhất','📈','#16a34a',top5prf,
     function(x){return x.profit;},
-    function(x){return fm(x.profit);});
+    function(x){
+      var mg=x.rev>0?Math.round(x.profit/x.rev*100):0;
+      return fm(x.profit)+' ('+mg+'%)';
+    });
 
-  // Top 5 tồn kho chậm (có hàng nhưng ít bán)
-  var sold={}; arr.forEach(function(x){sold[x.id]=x.qty||0;});
+  // ── Tồn kho chậm bán ──
   var slow=products.filter(function(p){return parseFloat(p.stock)>0;})
-    .map(function(p){return{name:p.name,stock:p.stock,sold:sold[p.id]||0,id:p.id};})
-    .sort(function(a,b){return a.sold-b.sold;}).slice(0,5);
+    .map(function(p){return{name:p.name,stock:parseFloat(p.stock),sold:sold[p.id]||0,id:p.id};})
+    .sort(function(a,b){return a.sold-b.sold;}).slice(0,8);
   var t4='<div class="card"><div class="sttl">🐌 Tồn kho chậm bán</div>'
-    +(slow.length?slow.map(function(x,i){
-      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--br)">'
-        +'<div><div style="font-size:13px;font-weight:600">'+['🥇','🥈','🥉','4️⃣','5️⃣'][i]+' '+x.name+'</div>'
-        +'<div style="font-size:11px;color:var(--mu)">Đã bán: '+fmn(x.sold)+' đvt</div></div>'
-        +'<span class="chip chip-w">Tồn '+fmtStock(products.find(function(p){return p.id===x.id;}))||'0'+'</span>'
+    +(slow.length?slow.map(function(x){
+      var status,bg,tc;
+      if(x.sold===0){status='Không bán được';bg='#fef2f2';tc='#dc2626';}
+      else if(x.sold<5){status='Bán rất chậm';bg='#fffbeb';tc='#d97706';}
+      else{status='Bán chậm';bg='#f0fdf4';tc='#16a34a';}
+      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--br)">'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+x.name+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">Tồn: '+x.stock.toFixed(1)+' đvt · Đã bán: '+fmn(x.sold)+'</div></div>'
+        +'<span style="font-size:11px;font-weight:600;color:'+tc+';background:'+bg+';border-radius:20px;padding:3px 8px;margin-left:8px;white-space:nowrap">'+status+'</span>'
         +'</div>';
-    }).join(''):'<div class="empty">Không có sản phẩm tồn kho</div>')+'</div>';
+    }).join(''):'<div class="empty">Không có hàng tồn kho</div>')+'</div>';
 
-  el.innerHTML=nav+summary+t1+t2+t3+t4;
-}
+  // ── Nhận xét & Dự đoán ──
+  var insights=smartInsights(st,prev,arr,arrPrev,sold,curAnalysisMonth);
 
-var curAnalysisMonth=tm();
-function shiftAnalysis(d){
-  var p=curAnalysisMonth.split('-'),y=parseInt(p[0]),m=parseInt(p[1])+d;
-  if(m>12){m=1;y++;}else if(m<1){m=12;y--;}
-  curAnalysisMonth=y+'-'+String(m).padStart(2,'0');
-  renderAnalysis();
+  el.innerHTML=nav+summary+insights+t1+t2+t3+t4;
 }
 
 // ==================== QUẢN LÝ ====================
