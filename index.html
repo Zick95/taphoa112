@@ -194,7 +194,7 @@ input:focus,select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,2
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
 .drag{width:48px;height:5px;background:#cbd5e1;border-radius:99px;
   margin:0 auto 10px;touch-action:none;
-  padding:12px 50px;
+  padding:8px 24px;
   box-sizing:content-box;background-clip:content-box}
 .sh-title{font-size:16px;font-weight:700;margin-bottom:14px}
 
@@ -975,7 +975,7 @@ document.getElementById('sellSearch').addEventListener('keydown',function(e){
   if(!q) return;
   // Tìm theo barcode chính xác trước
   var byBarcode=products.find(function(p){return p.barcode&&p.barcode===q;});
-  if(byBarcode){ this.value=''; renderSell(); openATC(byBarcode); return; }
+  if(byBarcode){ this.value=''; renderSell(); onBarcodeFound(q); return; }
   // Nếu chỉ còn 1 kết quả thì mở luôn
   var ql=q.toLowerCase();
   var matched=products.filter(function(p){return p.name.toLowerCase().includes(ql)||(p.category||'').toLowerCase().includes(ql);});
@@ -1606,21 +1606,39 @@ function closeScanner(){
 function onBarcodeFound(code){
   if(!code||!code.trim()) return;
   code=code.trim();
+
+  // Chế độ nhập barcode cho sản phẩm
   if(_scanMode==='product'){
     closeScanner();
     document.getElementById('pm-barcode').value=code;
     toast('✓ Mã vạch: '+code);
     return;
   }
-  // Bán hàng — tìm sản phẩm theo barcode
+
+  // Chế độ bán hàng — tìm sản phẩm
   var p=products.find(function(x){return x.barcode&&x.barcode===code;});
-  if(p){
-    closeScanner();
-    openATC(p);
-    toast('✓ '+p.name);
-  }else{
-    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa gán sản phẩm nào. Nhập thủ công bên dưới.';
+  if(!p){
+    document.getElementById('scan-status').textContent='⚠️ Mã "'+code+'" chưa có sản phẩm nào.';
     document.getElementById('scan-manual').value=code;
+    return;
+  }
+  closeScanner();
+
+  // Smart scanning: kiểm tra modal ATC đang mở không
+  var atcOpen=document.getElementById('ovl-atc').classList.contains('on');
+  if(atcOpen&&atcProd){
+    if(atcProd.id===p.id){
+      // Cùng sản phẩm → cộng thêm 1
+      atcQtyDelta(1);
+      toast('✓ +1 '+p.name+' (x'+document.getElementById('atc-qty').value+')');
+    }else{
+      // Khác sản phẩm → tự động thêm sản phẩm cũ vào giỏ, mở sản phẩm mới
+      confirmATC();
+      openATC(p);
+    }
+  }else{
+    // Chưa có modal → mở bình thường
+    openATC(p);
   }
 }
 
