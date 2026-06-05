@@ -1,4 +1,4 @@
-const CACHE = 'tapho112-v19';
+const CACHE = 'tapho112-v20';
 
 // Không pre-cache trong install — tránh lỗi path sai làm SW mới không activate được
 self.addEventListener('install', () => self.skipWaiting());
